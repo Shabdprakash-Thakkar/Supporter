@@ -1,0 +1,18 @@
+# Discord Bot Dependencies
+discord.py>=2.3.0
+python-dotenv>=1.0.0
+pytz>=2023.3
+supabase
+PyNaCl>=1.5.0
+google-api-python-client>=2.108.0
+asyncpg>=0.29.0
+feedparser>=6.0.10
+aiohttp>=3.9.0
+
+# Flask Frontend Dependencies (NEW)
+Flask>=3.0.0
+Flask-Cors>=4.0.0
+Werkzeug>=3.0.0
+
+# Production Server (NEW)
+gunicorn>=21.2.0

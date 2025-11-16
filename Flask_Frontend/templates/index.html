@@ -1,0 +1,424 @@
+{% extends "base.html" %} {% block title %}Supporter BOT - Home{% endblock %} {%
+block content %}
+<!-- Hero Section -->
+<section class="hero-section bg-gradient-primary text-white py-5">
+  <div class="container">
+    <div class="row align-items-center py-5">
+      <div class="col-lg-6 mb-4 mb-lg-0" data-aos="fade-right">
+        <h1 class="display-3 fw-bold mb-4 animate-fade-in">
+          Supercharge Your Discord Server
+        </h1>
+        <p class="lead mb-4 text-white-80">
+          Supporter BOT is your all-in-one solution for server management, user
+          engagement, and automation. Level up your community experience today!
+        </p>
+        <div class="d-flex flex-wrap gap-3">
+          <a
+            href="{{ invite_url }}"
+            class="btn btn-light btn-lg px-4 shadow-lg"
+            target="_blank"
+          >
+            <i class="fab fa-discord me-2"></i>Add to Discord
+          </a>
+          <a href="#features" class="btn btn-outline-light btn-lg px-4">
+            <i class="fas fa-rocket me-2"></i>Explore Features
+          </a>
+        </div>
+      </div>
+      <div class="col-lg-6" data-aos="fade-left">
+        <div class="hero-image-container">
+          <img
+            src="{{ url_for('static', filename='images/bot-logo.png') }}"
+            alt="Supporter BOT"
+            class="img-fluid rounded-4 shadow-2xl animate-float"
+            onerror=" this.src='https://via.placeholder.com/600x400/5865F2/ffffff?text=Supporter+BOT+by+Shabdprakash' "
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section py-5 bg-light">
+  <div class="container">
+    <div class="row g-4 text-center">
+      <div class="col-md-3 col-sm-6" data-aos="zoom-in" data-aos-delay="100">
+        <div class="stat-card p-4 bg-white rounded-4 shadow-sm h-100">
+          <i class="fas fa-server text-primary fs-1 mb-3"></i>
+          <h3 class="fw-bold mb-2" id="stat-servers">3+</h3>
+          <p class="text-muted mb-0">Active Servers</p>
+        </div>
+      </div>
+      <div class="col-md-3 col-sm-6" data-aos="zoom-in" data-aos-delay="200">
+        <div class="stat-card p-4 bg-white rounded-4 shadow-sm h-100">
+          <i class="fas fa-users text-success fs-1 mb-3"></i>
+          <h3 class="fw-bold mb-2" id="stat-users">1000+</h3>
+          <p class="text-muted mb-0">Happy Users</p>
+        </div>
+      </div>
+      <div class="col-md-3 col-sm-6" data-aos="zoom-in" data-aos-delay="300">
+        <div class="stat-card p-4 bg-white rounded-4 shadow-sm h-100">
+          <i class="fas fa-terminal text-warning fs-1 mb-3"></i>
+          <h3 class="fw-bold mb-2" id="stat-commands">15,780+</h3>
+          <p class="text-muted mb-0">Commands Used</p>
+        </div>
+      </div>
+      <div class="col-md-3 col-sm-6" data-aos="zoom-in" data-aos-delay="400">
+        <div class="stat-card p-4 bg-white rounded-4 shadow-sm h-100">
+          <i class="fas fa-check-circle text-info fs-1 mb-3"></i>
+          <h3 class="fw-bold mb-2" id="stat-uptime">99.9%</h3>
+          <p class="text-muted mb-0">Uptime</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="features-section py-5">
+  <div class="container py-5">
+    <div class="text-center mb-5" data-aos="fade-up">
+      <h2 class="display-4 fw-bold mb-3">
+        <i class="fas fa-star text-warning me-2"></i>Powerful Features
+      </h2>
+      <p class="lead text-muted">
+        Everything you need to manage and grow your Discord community
+      </p>
+    </div>
+
+    <div class="row g-4">
+      <!-- Feature 1: Leveling System -->
+      <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
+        <div
+          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
+        >
+          <div
+            class="feature-icon bg-primary bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
+          >
+            <i class="fas fa-trophy text-primary fs-2"></i>
+          </div>
+          <h4 class="fw-bold mb-3">Advanced Leveling System</h4>
+          <p class="text-muted mb-3">
+            Engage your community with XP rewards for messages, images, and
+            voice activity. Automatic role rewards and server-wide leaderboards.
+          </p>
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>10 XP per message
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>15 XP per image
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>4 XP per minute in
+              voice
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Auto role rewards
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Feature 2: YouTube Notifications -->
+      <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
+        <div
+          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
+        >
+          <div
+            class="feature-icon bg-danger bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
+          >
+            <i class="fab fa-youtube text-danger fs-2"></i>
+          </div>
+          <h4 class="fw-bold mb-3">YouTube Notifications</h4>
+          <p class="text-muted mb-3">
+            Never miss an upload! Automatically announce new videos,
+            livestreams, and premieres from your favorite YouTube channels.
+          </p>
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>RSS-based monitoring
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>No API quota limits
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Custom role mentions
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Instant
+              notifications
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Feature 3: Channel Management -->
+      <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
+        <div
+          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
+        >
+          <div
+            class="feature-icon bg-warning bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
+          >
+            <i class="fas fa-shield-alt text-warning fs-2"></i>
+          </div>
+          <h4 class="fw-bold mb-3">Advanced Channel Control</h4>
+          <p class="text-muted mb-3">
+            Create media-only channels, block unwanted links, and maintain clean
+            discussions with intelligent message filtering.
+          </p>
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Media-only channels
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Block Discord
+              invites
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Block all links
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Role-based bypass
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Feature 4: Time Channels -->
+      <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
+        <div
+          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
+        >
+          <div
+            class="feature-icon bg-info bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
+          >
+            <i class="fas fa-clock text-info fs-2"></i>
+          </div>
+          <h4 class="fw-bold mb-3">Live Time Channels</h4>
+          <p class="text-muted mb-3">
+            Keep your international community synchronized with voice channels
+            that automatically update to show current time and date.
+          </p>
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Current date display
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>India Standard Time
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Japan Standard Time
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Auto-updates
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Feature 5: Easy Configuration -->
+      <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="500">
+        <div
+          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
+        >
+          <div
+            class="feature-icon bg-success bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
+          >
+            <i class="fas fa-cog text-success fs-2"></i>
+          </div>
+          <h4 class="fw-bold mb-3">Easy Configuration</h4>
+          <p class="text-muted mb-3">
+            Simple slash commands make setup a breeze. No complicated
+            configuration files or technical knowledge required.
+          </p>
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Intuitive slash
+              commands
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Real-time config
+              viewer
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Role-based
+              permissions
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Comprehensive help
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Feature 6: Owner Controls -->
+      <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="600">
+        <div
+          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
+        >
+          <div
+            class="feature-icon bg-dark bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
+          >
+            <i class="fas fa-crown text-dark fs-2"></i>
+          </div>
+          <h4 class="fw-bold mb-3">Owner Controls</h4>
+          <p class="text-muted mb-3">
+            Powerful owner-only commands give you complete control over where
+            and how the bot operates.
+          </p>
+          <ul class="list-unstyled">
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Server management
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Ban/unban guilds
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Force leave servers
+            </li>
+            <li class="mb-2">
+              <i class="fas fa-check text-success me-2"></i>Server list viewer
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Commands Section -->
+<section id="commands" class="commands-section py-5 bg-light">
+  <div class="container py-5">
+    <div class="text-center mb-5" data-aos="fade-up">
+      <h2 class="display-4 fw-bold mb-3">
+        <i class="fas fa-terminal text-primary me-2"></i>Command Categories
+      </h2>
+      <p class="lead text-muted">
+        Over 33 powerful commands organized by category
+      </p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="command-category bg-white p-4 rounded-4 shadow-sm h-100">
+          <h5 class="fw-bold text-primary mb-3">
+            <i class="fas fa-trophy me-2"></i>Leveling (10 commands)
+          </h5>
+          <code class="d-block mb-2">/l1-level</code>
+          <code class="d-block mb-2">/l2-leaderboard</code>
+          <code class="d-block mb-2">/l3-setup-level-reward</code>
+          <p class="text-muted mt-3 mb-0 small">+ 7 more commands</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="200">
+        <div class="command-category bg-white p-4 rounded-4 shadow-sm h-100">
+          <h5 class="fw-bold text-danger mb-3">
+            <i class="fab fa-youtube me-2"></i>YouTube (5 commands)
+          </h5>
+          <code class="d-block mb-2">/y1-find-youtube-channel-id</code>
+          <code class="d-block mb-2">/y2-setup-youtube-notifications</code>
+          <code class="d-block mb-2">/y3-disable-youtube-notifications</code>
+          <p class="text-muted mt-3 mb-0 small">+ 2 more commands</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="300">
+        <div class="command-category bg-white p-4 rounded-4 shadow-sm h-100">
+          <h5 class="fw-bold text-warning mb-3">
+            <i class="fas fa-shield-alt me-2"></i>Restrictions (11 commands)
+          </h5>
+          <code class="d-block mb-2">/n1-setup-no-text</code>
+          <code class="d-block mb-2">/n6-no-discord-link</code>
+          <code class="d-block mb-2">/n7-no-links</code>
+          <p class="text-muted mt-3 mb-0 small">+ 8 more commands</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="400">
+        <div class="command-category bg-white p-4 rounded-4 shadow-sm h-100">
+          <h5 class="fw-bold text-info mb-3">
+            <i class="fas fa-clock me-2"></i>Time (1 command)
+          </h5>
+          <code class="d-block mb-2">/t1-setup-time-channels</code>
+          <p class="text-muted mt-3 mb-0 small">
+            Set up auto-updating time displays
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="500">
+        <div class="command-category bg-white p-4 rounded-4 shadow-sm h-100">
+          <h5 class="fw-bold text-success mb-3">
+            <i class="fas fa-info-circle me-2"></i>General (2 commands)
+          </h5>
+          <code class="d-block mb-2">/g1-help</code>
+          <code class="d-block mb-2">/g2-show-config</code>
+          <p class="text-muted mt-3 mb-0 small">
+            Help and configuration viewer
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="600">
+        <div class="command-category bg-white p-4 rounded-4 shadow-sm h-100">
+          <h5 class="fw-bold text-dark mb-3">
+            <i class="fas fa-crown me-2"></i>Owner (4 commands)
+          </h5>
+          <code class="d-block mb-2">/g3-serverlist</code>
+          <code class="d-block mb-2">/g4-leaveserver</code>
+          <code class="d-block mb-2">/g5-banguild</code>
+          <p class="text-muted mt-3 mb-0 small">+ 1 more command</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section bg-gradient-primary text-white py-5">
+  <div class="container text-center py-5" data-aos="zoom-in">
+    <h2 class="display-4 fw-bold mb-4">Ready to Transform Your Server?</h2>
+    <p class="lead mb-4">
+      Join thousands of communities already using Supporter BOT
+    </p>
+    <a
+      href="{{ invite_url }}"
+      class="btn btn-light btn-lg px-5 shadow-lg"
+      target="_blank"
+    >
+      <i class="fab fa-discord me-2"></i>Add to Discord Now
+    </a>
+  </div>
+</section>
+{% endblock %} {% block extra_js %}
+<script>
+  // Smooth scrolling for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+    anchor.addEventListener("click", function (e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute("href"));
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+
+  // Fetch and update stats
+  fetch("/api/stats")
+    .then((response) => response.json())
+    .then((data) => {
+      document.getElementById("stat-servers").textContent =
+        data.total_servers + "+";
+      document.getElementById("stat-users").textContent =
+        data.total_users.toLocaleString() + "+";
+      document.getElementById("stat-commands").textContent =
+        data.commands_used.toLocaleString() + "+";
+      document.getElementById("stat-uptime").textContent = data.uptime;
+    })
+    .catch((error) => console.error("Error fetching stats:", error));
+</script>
+{% endblock %}

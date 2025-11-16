@@ -1,0 +1,293 @@
+{% extends "base.html" %} {% block title %}Contact Us - Supporter BOT{% endblock
+%} {% block content %}
+<!-- Contact Hero -->
+<section class="contact-hero bg-gradient-primary text-white py-5">
+  <div class="container text-center py-5">
+    <h1 class="display-3 fw-bold mb-3" data-aos="fade-down">Get In Touch</h1>
+    <p class="lead" data-aos="fade-up">
+      Have questions or feedback? We'd love to hear from you!
+    </p>
+  </div>
+</section>
+
+<!-- Contact Form Section -->
+<section class="contact-section py-5">
+  <div class="container py-5">
+    <div class="row g-5">
+      <!-- Contact Form -->
+      <div class="col-lg-7" data-aos="fade-right">
+        <div class="contact-form-container bg-white p-5 rounded-4 shadow-lg">
+          <h2 class="fw-bold mb-4">
+            <i class="fas fa-envelope text-primary me-2"></i>Send us a Message
+          </h2>
+
+          <form id="contactForm">
+            <div class="mb-4">
+              <label for="name" class="form-label fw-semibold">
+                <i class="fas fa-user text-primary me-2"></i>Your Name
+              </label>
+              <input
+                type="text"
+                class="form-control form-control-lg"
+                id="name"
+                name="name"
+                placeholder="John Doe"
+                required
+              />
+            </div>
+
+            <div class="mb-4">
+              <label for="email" class="form-label fw-semibold">
+                <i class="fas fa-at text-primary me-2"></i>Email Address
+              </label>
+              <input
+                type="email"
+                class="form-control form-control-lg"
+                id="email"
+                name="email"
+                placeholder="john@example.com"
+                required
+              />
+            </div>
+
+            <div class="mb-4">
+              <label for="subject" class="form-label fw-semibold">
+                <i class="fas fa-tag text-primary me-2"></i>Subject
+              </label>
+              <select
+                class="form-select form-select-lg"
+                id="subject"
+                name="subject"
+              >
+                <option selected>General Inquiry</option>
+                <option>Bug Report</option>
+                <option>Feature Request</option>
+                <option>Partnership</option>
+                <option>Other</option>
+              </select>
+            </div>
+
+            <div class="mb-4">
+              <label for="message" class="form-label fw-semibold">
+                <i class="fas fa-comment-dots text-primary me-2"></i>Your
+                Message
+              </label>
+              <textarea
+                class="form-control form-control-lg"
+                id="message"
+                name="message"
+                rows="6"
+                placeholder="Tell us what's on your mind..."
+                required
+              ></textarea>
+            </div>
+
+            <div id="formMessage" class="alert d-none" role="alert"></div>
+
+            <button
+              type="submit"
+              class="btn btn-primary btn-lg px-5 w-100"
+              id="submitBtn"
+            >
+              <i class="fas fa-paper-plane me-2"></i>Send Message
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Contact Information -->
+      <div class="col-lg-5" data-aos="fade-left">
+        <div class="contact-info">
+          <!-- Quick Stats -->
+          <div class="info-card bg-white p-4 rounded-4 shadow-sm mb-4">
+            <h4 class="fw-bold mb-4">
+              <i class="fas fa-info-circle text-primary me-2"></i>Quick Info
+            </h4>
+            <div class="d-flex align-items-center mb-3">
+              <div
+                class="icon-box bg-primary bg-opacity-10 rounded-circle p-3 me-3"
+              >
+                <i class="fas fa-server text-primary fs-5"></i>
+              </div>
+              <div>
+                <h6 class="mb-0 fw-semibold">Active Servers</h6>
+                <p class="text-muted mb-0">3+ communities</p>
+              </div>
+            </div>
+            <div class="d-flex align-items-center mb-3">
+              <div
+                class="icon-box bg-success bg-opacity-10 rounded-circle p-3 me-3"
+              >
+                <i class="fas fa-clock text-success fs-5"></i>
+              </div>
+              <div>
+                <h6 class="mb-0 fw-semibold">Response Time</h6>
+                <p class="text-muted mb-0">Within 24 hours</p>
+              </div>
+            </div>
+            <div class="d-flex align-items-center">
+              <div
+                class="icon-box bg-info bg-opacity-10 rounded-circle p-3 me-3"
+              >
+                <i class="fas fa-shield-alt text-info fs-5"></i>
+              </div>
+              <div>
+                <h6 class="mb-0 fw-semibold">Uptime</h6>
+                <p class="text-muted mb-0">99.9% reliable</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Social Links -->
+          <div class="info-card bg-white p-4 rounded-4 shadow-sm mb-4">
+            <h4 class="fw-bold mb-4">
+              <i class="fas fa-share-alt text-primary me-2"></i>Connect With Us
+            </h4>
+            <div class="social-links-grid d-grid gap-3">
+              <a
+                href="https://discord.gg/NbNNU24HjF"
+                target="_blank"
+                class="social-link-card p-3 rounded-3 bg-light text-decoration-none d-flex align-items-center hover-lift"
+              >
+                <i class="fab fa-discord text-primary fs-3 me-3"></i>
+                <div>
+                  <h6 class="mb-0 fw-semibold text-dark">Discord</h6>
+                  <p class="text-muted mb-0 small">Join our server</p>
+                </div>
+              </a>
+              <a
+                href="https://github.com/Shabdprakash-Thakkar"
+                target="_blank"
+                class="social-link-card p-3 rounded-3 bg-light text-decoration-none d-flex align-items-center hover-lift"
+              >
+                <i class="fab fa-github text-dark fs-3 me-3"></i>
+                <div>
+                  <h6 class="mb-0 fw-semibold text-dark">GitHub</h6>
+                  <p class="text-muted mb-0 small">View source code</p>
+                </div>
+              </a>
+              <a
+                href="https://www.instagram.com/study_time_95/"
+                target="_blank"
+                class="social-link-card p-3 rounded-3 bg-light text-decoration-none d-flex align-items-center hover-lift"
+              >
+                <i class="fab fa-instagram text-info fs-3 me-3"></i>
+                <div>
+                  <h6 class="mb-0 fw-semibold text-dark">Instagram</h6>
+                  <p class="text-muted mb-0 small">Follow for updates</p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <!-- FAQ Quick Links -->
+          <div
+            class="info-card bg-gradient-primary text-white p-4 rounded-4 shadow-sm"
+          >
+            <h4 class="fw-bold mb-3">
+              <i class="fas fa-question-circle me-2"></i>Need Help?
+            </h4>
+            <p class="mb-3">Check out these resources first:</p>
+            <ul class="list-unstyled">
+              <li class="mb-2">
+                <a
+                  href="{{ url_for('index') }}#commands"
+                  class="text-white text-decoration-none"
+                >
+                  <i class="fas fa-terminal me-2"></i>Command List
+                </a>
+              </li>
+              <li class="mb-2">
+                <a
+                  href="{{ url_for('index') }}#features"
+                  class="text-white text-decoration-none"
+                >
+                  <i class="fas fa-star me-2"></i>Features Overview
+                </a>
+              </li>
+              <li>
+                <a
+                  href="{{ invite_url }}"
+                  class="text-white text-decoration-none"
+                  target="_blank"
+                >
+                  <i class="fab fa-discord me-2"></i>Add to Discord
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %} {% block extra_js %}
+<script>
+  document
+    .getElementById("contactForm")
+    .addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById("submitBtn");
+      const formMessage = document.getElementById("formMessage");
+      const originalBtnText = submitBtn.innerHTML;
+
+      // Disable button and show loading
+      submitBtn.disabled = true;
+      submitBtn.innerHTML =
+        '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+
+      // Get form data
+      const formData = {
+        name: document.getElementById("name").value,
+        email: document.getElementById("email").value,
+        subject: document.getElementById("subject").value,
+        message: document.getElementById("message").value,
+      };
+
+      try {
+        const response = await fetch("/api/contact", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        });
+
+        const data = await response.json();
+
+        // Show message
+        formMessage.classList.remove("d-none");
+
+        if (response.ok) {
+          formMessage.classList.remove("alert-danger");
+          formMessage.classList.add("alert-success");
+          formMessage.innerHTML =
+            '<i class="fas fa-check-circle me-2"></i>' + data.message;
+
+          // Reset form
+          document.getElementById("contactForm").reset();
+        } else {
+          formMessage.classList.remove("alert-success");
+          formMessage.classList.add("alert-danger");
+          formMessage.innerHTML =
+            '<i class="fas fa-exclamation-circle me-2"></i>' + data.message;
+        }
+
+        // Auto-hide message after 5 seconds
+        setTimeout(() => {
+          formMessage.classList.add("d-none");
+        }, 5000);
+      } catch (error) {
+        formMessage.classList.remove("d-none", "alert-success");
+        formMessage.classList.add("alert-danger");
+        formMessage.innerHTML =
+          '<i class="fas fa-exclamation-circle me-2"></i>An error occurred. Please try again.';
+      } finally {
+        // Re-enable button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+      }
+    });
+</script>
+{% endblock %}

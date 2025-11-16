@@ -1,0 +1,13 @@
+# Environment variables - VERY IMPORTANT
+Data_Files/.env
+Data_Files/Guide.txt
+Data_Files/SQL.txt
+
+# Python virtual environment
+venv/
+*.pyc
+__pycache__/
+
+# IDE folders
+.vscode/
+.idea/
