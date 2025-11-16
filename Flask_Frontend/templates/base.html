@@ -9,21 +9,54 @@
     />
     <title>{% block title %}Supporter BOT{% endblock %}</title>
 
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/quality-512px.png') }}" sizes="512x512">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/quality-256px.png') }}" sizes="256x256">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/quality-128px.png') }}" sizes="128x128">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/quality-64px.png') }}" sizes="64x64">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/quality-32px.png') }}" sizes="32x32">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/quality-24px.png') }}" sizes="24x24">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/quality-16px.png') }}" sizes="16x16">
-    
-    <!-- Material Design Bootstrap CSS -->
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='images/quality-512px.png') }}"
+      sizes="512x512"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='images/quality-256px.png') }}"
+      sizes="256x256"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='images/quality-128px.png') }}"
+      sizes="128x128"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='images/quality-64px.png') }}"
+      sizes="64x64"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='images/quality-32px.png') }}"
+      sizes="32x32"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='images/quality-24px.png') }}"
+      sizes="24x24"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('static', filename='images/quality-16px.png') }}"
+      sizes="16x16"
+    />
+
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
 
-    <!-- Material Icons -->
     <link
       href="https://fonts.googleapis.com/icon?family=Material+Icons"
       rel="stylesheet"
@@ -32,22 +65,19 @@
       href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
       rel="stylesheet"
     />
-    <!-- <link rel="icon" href="/path/to/your/favicon.png" type="image/x-icon"> -->
 
-    <!-- Multiple favicon sizes for different browsers and resolutions -->
-<!-- Corrected Favicon Links -->
-    
-
-    <!-- Font Awesome -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
 
-    <!-- Custom CSS -->
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/toggle-theme.css') }}"
     />
 
     {% block extra_css %}{% endblock %}
@@ -65,6 +95,7 @@
           <i class="fas fa-robot me-2 fs-3"></i>
           <span class="fw-bold">Supporter BOT</span>
         </a>
+
         <button
           class="navbar-toggler"
           type="button"
@@ -73,8 +104,9 @@
         >
           <span class="navbar-toggler-icon"></span>
         </button>
+
         <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
+          <ul class="navbar-nav ms-auto align-items-center">
             <li class="nav-item">
               <a
                 class="nav-link {% if request.endpoint == 'index' %}active{% endif %}"
@@ -83,16 +115,19 @@
                 <i class="fas fa-home me-1"></i> Home
               </a>
             </li>
+
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('index')}}#features">
                 <i class="fas fa-star me-1"></i> Features
               </a>
             </li>
+
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('index')}}#commands">
                 <i class="fas fa-terminal me-1"></i> Commands
               </a>
             </li>
+
             <li class="nav-item">
               <a
                 class="nav-link {% if request.endpoint == 'contact' %}active{% endif %}"
@@ -101,14 +136,30 @@
                 <i class="fas fa-envelope me-1"></i> Contact
               </a>
             </li>
+
+            <!-- Add to Discord button -->
             <li class="nav-item">
               <a
-                class="nav-link btn btn-light text-primary ms-lg-2 px-3"
+                class="nav-link btn btn-light discord-btn ms-lg-2 px-3 me-2"
                 href="{{ invite_url }}"
                 target="_blank"
               >
                 <i class="fab fa-discord me-1"></i> Add to Discord
               </a>
+            </li>
+
+            <li class="nav-item ms-2">
+              <div
+                class="theme-toggle-btn"
+                id="themeToggle"
+                title="Toggle Dark/Light Mode (Ctrl+Shift+D)"
+              >
+                <div class="theme-toggle-slider">
+                  <span class="theme-icon">
+                    <i class="fas fa-sun"></i>
+                  </span>
+                </div>
+              </div>
             </li>
           </ul>
         </div>
@@ -131,6 +182,7 @@
               server management and enhance user engagement.
             </p>
           </div>
+
           <div class="col-md-4 mb-4">
             <h5 class="fw-bold mb-3">Quick Links</h5>
             <ul class="list-unstyled">
@@ -160,6 +212,7 @@
               </li>
             </ul>
           </div>
+
           <div class="col-md-4 mb-4">
             <h5 class="fw-bold mb-3">Connect With Us</h5>
             <div class="social-icons">
@@ -184,7 +237,9 @@
             </div>
           </div>
         </div>
+
         <hr class="border-secondary my-4" />
+
         <div class="text-center text-white-50">
           <p class="mb-0">
             &copy; 2025 Supporter BOT. Made with
@@ -194,11 +249,61 @@
       </div>
     </footer>
 
-    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
+    <script>
+      (function () {
+        "use strict";
+        const THEME_KEY = "supporter-bot-theme";
+
+        function getCurrentTheme() {
+          return localStorage.getItem(THEME_KEY) || "light";
+        }
+
+        function setTheme(theme) {
+          document.documentElement.setAttribute("data-theme", theme);
+          localStorage.setItem(THEME_KEY, theme);
+          const icon = document.querySelector(".theme-toggle-slider i");
+          if (icon) {
+            icon.className = theme === "dark" ? "fas fa-moon" : "fas fa-sun";
+          }
+        }
+
+        function toggleTheme() {
+          const current = getCurrentTheme();
+          const newTheme = current === "light" ? "dark" : "light";
+          setTheme(newTheme);
+          const btn = document.getElementById("themeToggle");
+          if (btn) {
+            btn.style.transform = "scale(0.95)";
+            setTimeout(() => (btn.style.transform = "scale(1)"), 100);
+          }
+        }
+
+        function init() {
+          setTheme(getCurrentTheme());
+          const themeToggle = document.getElementById("themeToggle");
+          if (themeToggle) {
+            themeToggle.addEventListener("click", toggleTheme);
+            console.log("✅ Theme toggle ready!");
+          }
+          document.addEventListener("keydown", function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "D") {
+              e.preventDefault();
+              toggleTheme();
+            }
+          });
+        }
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", init);
+        } else {
+          init();
+        }
+      })();
+    </script>
 
     {% block extra_js %}{% endblock %}
   </body>

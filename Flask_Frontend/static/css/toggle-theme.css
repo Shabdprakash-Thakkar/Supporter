@@ -1,0 +1,439 @@
+/* ===== THEME TOGGLE STYLES - COMPLETE FIXED VERSION ===== */
+
+/* Root variables for light mode (default) */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
+  --text-primary: #212529;
+  --text-secondary: #6c757d;
+  --text-muted: #adb5bd;
+  --border-color: #dee2e6;
+  --shadow-sm: rgba(0, 0, 0, 0.075);
+  --shadow-md: rgba(0, 0, 0, 0.15);
+  --shadow-lg: rgba(0, 0, 0, 0.25);
+  --card-bg: #ffffff;
+  --hover-bg: #f8f9fa;
+  --navbar-bg: #5865F2;
+  --footer-bg: #343a40;
+}
+
+/* Dark mode variables */
+[data-theme="dark"] {
+  --bg-primary: #1a1d23;
+  --bg-secondary: #23272f;
+  --bg-tertiary: #2c313a;
+  --text-primary: #ffffff;
+  --text-secondary: #b9bbbe;
+  --text-muted: #72767d;
+  --border-color: #3a3f47;
+  --shadow-sm: rgba(0, 0, 0, 0.3);
+  --shadow-md: rgba(0, 0, 0, 0.5);
+  --shadow-lg: rgba(0, 0, 0, 0.7);
+  --card-bg: #2c313a;
+  --hover-bg: #3a3f47;
+  --navbar-bg: #1f2937;
+  --footer-bg: #111827;
+}
+
+/* Apply theme variables */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ===== THEME TOGGLE BUTTON ===== */
+.theme-toggle-btn {
+  position: relative;
+  width: 60px;
+  height: 30px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.theme-toggle-btn:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  background-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.theme-toggle-slider {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(135deg, #FDB813 0%, #F59E0B 100%);
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  left: 3px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .theme-toggle-slider {
+  transform: translateX(30px);
+  background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+}
+
+.theme-icon {
+  font-size: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ===== NAVBAR "ADD TO DISCORD" BUTTON - FIXED ===== */
+
+/* Light mode styles are handled by the .discord-btn class at the bottom */
+
+/* Dark mode - Blue background with white text */
+[data-theme="dark"] .navbar .btn-light,
+[data-theme="dark"] .nav-link.btn.btn-light {
+  background-color: #5865F2 !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  border: 2px solid transparent !important;
+  box-shadow: 0 2px 8px rgba(88, 101, 242, 0.4) !important;
+}
+
+[data-theme="dark"] .navbar .btn-light:hover,
+[data-theme="dark"] .nav-link.btn.btn-light:hover {
+  background-color: #4752C4 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.6) !important;
+  transform: translateY(-1px);
+}
+
+/* Ensure Discord icon is white in dark mode */
+[data-theme="dark"] .navbar .btn-light i,
+[data-theme="dark"] .nav-link.btn.btn-light i {
+  color: #ffffff !important;
+}
+
+/* ===== CTA SECTION AND HERO BUTTONS ===== */
+
+/* CTA Section and Hero buttons in dark mode - White bg with blue text */
+[data-theme="dark"] .cta-section .btn-light,
+[data-theme="dark"] .hero-section .btn-light {
+  background-color: #ffffff !important;
+  color: #5865F2 !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.15) !important;
+}
+
+[data-theme="dark"] .cta-section .btn-light:hover,
+[data-theme="dark"] .hero-section .btn-light:hover {
+  background-color: #f8f9fa !important;
+  color: #4752C4 !important;
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-2px);
+}
+
+/* Remove conflicting gradient background styles */
+[data-theme="dark"] .bg-gradient-primary .btn-light {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #5865F2 !important;
+  border: none !important;
+}
+
+/* Outline buttons in dark mode */
+[data-theme="dark"] .btn-outline-light {
+  border-color: rgba(255, 255, 255, 0.8) !important;
+  color: #ffffff !important;
+  background-color: transparent !important;
+}
+
+[data-theme="dark"] .btn-outline-light:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+/* ===== BACKGROUND COLORS ===== */
+
+.bg-light {
+  background-color: var(--bg-secondary) !important;
+}
+
+.bg-white {
+  background-color: var(--card-bg) !important;
+}
+
+/* ===== TEXT COLORS ===== */
+
+.text-dark {
+  color: var(--text-primary) !important;
+}
+
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+.text-white-50,
+.text-white-80 {
+  opacity: 0.8;
+}
+
+[data-theme="dark"] .text-white-50,
+[data-theme="dark"] .text-white-80 {
+  opacity: 1;
+  color: var(--text-secondary) !important;
+}
+
+/* ===== CARDS ===== */
+
+.card,
+.feature-card,
+.stat-card,
+.command-category,
+.contact-form-container,
+.info-card {
+  background-color: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ===== SHADOWS ===== */
+
+.shadow-sm {
+  box-shadow: 0 0.125rem 0.25rem var(--shadow-sm) !important;
+}
+
+.shadow {
+  box-shadow: 0 0.5rem 1rem var(--shadow-md) !important;
+}
+
+.shadow-lg {
+  box-shadow: 0 1rem 3rem var(--shadow-lg) !important;
+}
+
+/* ===== FORMS ===== */
+
+.form-control,
+.form-select {
+  background-color: var(--bg-primary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--bg-primary);
+  border-color: #5865F2;
+  color: var(--text-primary);
+}
+
+.form-control::placeholder {
+  color: var(--text-muted);
+}
+
+/* ===== NAVBAR ===== */
+
+.navbar-dark {
+  background-color: var(--navbar-bg) !important;
+}
+
+[data-theme="dark"] .navbar-dark {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .navbar-brand {
+  color: white !important;
+}
+
+[data-theme="dark"] .nav-link {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+[data-theme="dark"] .nav-link:hover,
+[data-theme="dark"] .nav-link.active {
+  color: white !important;
+}
+
+/* ===== FOOTER ===== */
+
+footer.bg-dark {
+  background-color: var(--footer-bg) !important;
+}
+
+[data-theme="dark"] footer .text-white-50 {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ===== SOCIAL LINKS ===== */
+
+.social-link-card {
+  background-color: var(--hover-bg) !important;
+  transition: all 0.3s ease;
+}
+
+.social-link-card:hover {
+  background-color: var(--bg-tertiary) !important;
+  transform: translateY(-5px);
+}
+
+/* ===== GRADIENTS IN DARK MODE ===== */
+
+[data-theme="dark"] .bg-gradient-primary {
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%) !important;
+}
+
+[data-theme="dark"] .hero-section {
+  background: linear-gradient(135deg, #1f2937 0%, #2d3748 100%) !important;
+}
+
+[data-theme="dark"] .cta-section {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%) !important;
+}
+
+/* ===== IMAGES ===== */
+
+[data-theme="dark"] img {
+  opacity: 0.9;
+  filter: brightness(0.95);
+}
+
+[data-theme="dark"] img:hover {
+  opacity: 1;
+  filter: brightness(1);
+}
+
+/* ===== CODE BLOCKS ===== */
+
+code {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+/* ===== OTHER ELEMENTS ===== */
+
+hr {
+  border-color: var(--border-color) !important;
+  opacity: 0.3;
+}
+
+.alert {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.list-group-item {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* ===== TRANSITIONS ===== */
+
+.feature-card,
+.stat-card,
+.command-category,
+.social-link-card,
+.info-card,
+.contact-form-container {
+  transition: all 0.3s ease !important;
+}
+
+.btn,
+button {
+  transition: all 0.15s ease-in-out !important;
+}
+
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 1rem 3rem var(--shadow-lg) !important;
+}
+
+body.theme-transitioning {
+  pointer-events: none;
+}
+
+/* ===== NAVBAR SPACING (RESPONSIVE) ===== */
+
+.navbar-nav .nav-item:last-child {
+  margin-right: 0;
+}
+
+@media (max-width: 991px) {
+  .theme-toggle-btn {
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+  
+  .navbar-nav .nav-item:last-child {
+    margin-left: 0;
+  }
+}
+
+@media (min-width: 992px) {
+  .navbar-nav .nav-item {
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+
+@media print {
+  [data-theme="dark"] {
+    --bg-primary: #ffffff;
+    --text-primary: #212529;
+    --card-bg: #ffffff;
+  }
+}
+
+/* ===== ADD TO DISCORD BUTTON (NAVBAR) ===== */
+
+/* Light mode – keep white background + blue text */
+.discord-btn {
+  background-color: #ffffff !important;
+  color: #5865F2 !important;
+  border-radius: 999px;
+  font-weight: 600;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px rgba(88, 101, 242, 0.2);
+}
+
+.discord-btn i {
+  color: #5865F2 !important;
+}
+
+.discord-btn:hover {
+  background-color: #1879db !important;
+  color: #4752C4 !important;
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.35);
+  transform: translateY(-1px);
+}
+
+/* NOTE: Dark mode for this button is handled by the .navbar .btn-light rule
+   near the top of the file to ensure correct specificity. */
