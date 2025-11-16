@@ -26,8 +26,18 @@ class HelpManager:
             embed = discord.Embed(
                 title="🤖 Supporter Bot Help",
                 description="Complete list of available commands organized by category.",
-                color=discord.Color.from_rgb(0, 255, 0),
+                color=discord.Color.from_rgb(88, 101, 242),  # Discord Blurple
                 timestamp=datetime.now(timezone.utc),
+            )
+
+            embed.add_field(
+                name="⚙️ General Commands (3 commands)",
+                value=(
+                    "`/g1-help` → Show this help message.\n"
+                    "`/g2-show-config` → Show current bot configuration for this server.\n"
+                    "`/ping` → Check if the bot is responsive and view live stats."
+                ),
+                inline=False,
             )
 
             embed.add_field(
@@ -50,11 +60,11 @@ class HelpManager:
             embed.add_field(
                 name="📢 YouTube Notifications (5 commands)",
                 value=(
-                    "`/y1-find-youtube-channel-id` → Find a channel's ID from its @handle.\n"
+                    "`/y1-find-youtube-channel-id` → Find a channel's ID from its @handle or custom name.\n"
                     "`/y2-setup-youtube-notifications` → Set up notifications for a YT channel.\n"
                     "`/y3-disable-youtube-notifications` → Stop notifications for a YT channel.\n"
-                    "`/y4-bulk-seed-all-videos` → [ADMIN] Seed existing videos for a channel (bulk).\n"
-                    "`/y5-test-rss-feed` → [ADMIN] Test a channel's RSS feed and preview what would be processed."
+                    "`/y4-bulk-seed-all-videos` → [ADMIN] Seed existing videos from a channel's RSS feed.\n"
+                    "`/y5-test-rss-feed` → [ADMIN] Test a channel's RSS feed and preview results."
                 ),
                 inline=False,
             )
@@ -70,7 +80,7 @@ class HelpManager:
                     "`/n11-remove-text-only` → Remove text-only restrictions.\n\n"
                     "**Link Control:**\n"
                     "`/n6-no-discord-link` → Block Discord invite links only.\n"
-                    "`/n7-no-links` → Block ALL links.\n"
+                    "`/n7-no-links` → Block ALL links silently.\n"
                     "`/n8-remove-no-discord-link` → Stop blocking Discord links.\n"
                     "`/n9-remove-no-links` → Stop blocking all links.\n\n"
                     "**Bypass System:**\n"
@@ -89,29 +99,21 @@ class HelpManager:
                 inline=False,
             )
 
-            embed.add_field(
-                name="⚙️ General Commands (2 commands)",
-                value=(
-                    "`/g1-help` → Show this help message.\n"
-                    "`/g2-show-config` → Show current bot configuration for this server."
-                ),
-                inline=False,
-            )
-
             if await self.bot.is_owner(interaction.user):
                 embed.add_field(
-                    name="👑 Owner Commands (4 commands)",
+                    name="👑 Owner Commands (5 commands)",
                     value=(
                         "`/g3-serverlist` → Lists all servers the bot is in.\n"
-                        "`/g4-leaveserver` → Force the bot to leave a server.\n"
-                        "`/g5-banguild` → Ban a server from using the bot.\n"
-                        "`/g6-unbanguild` → Unban a server."
+                        "`/g4-leaveserver` → Force the bot to leave a server by ID.\n"
+                        "`/g5-banguild` → Ban a server and make the bot leave.\n"
+                        "`/g6-unbanguild` → Unban a server, allowing it to re-invite the bot.\n"
+                        "`/force-stats-update` → Force update bot stats to database immediately."
                     ),
                     inline=False,
                 )
 
             embed.set_footer(
-                text=f"Server: {interaction.guild.name} | Total: 33 commands",
+                text=f"Server: {interaction.guild.name} | Total: 35 commands",
                 icon_url=interaction.guild.icon.url if interaction.guild.icon else None,
             )
 

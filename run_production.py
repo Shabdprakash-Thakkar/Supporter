@@ -2,8 +2,6 @@
 """
 PRODUCTION RUNNER
 Python-only entry point that runs both Discord Bot and Flask Frontend
-Optimized for port xxxx on IP xxxxx
-Domain: https://shabdprakash-thakkar.online
 """
 
 import sys
@@ -20,6 +18,11 @@ FLASK_DIR = BASE_DIR / "Flask_Frontend"
 # Add to Python path BEFORE any imports
 sys.path.insert(0, str(PYTHON_FILES_DIR))
 sys.path.insert(0, str(FLASK_DIR))
+
+# Read from .env file
+SERVER_IP = os.getenv("SERVER_IP", "194.164.56.164")
+SERVER_PORT = os.getenv("FLASK_PORT", "9528")
+SERVER_DOMAIN = os.getenv("SERVER_DOMAIN", "https://shabdprakash-thakkar.online")
 
 
 def run_discord_bot():
@@ -47,9 +50,9 @@ def run_flask_frontend():
     print("\n" + "=" * 60)
     print("🌐 STARTING FLASK FRONTEND (PRODUCTION)")
     print("=" * 60)
-    print("📍 Server IP: 194.164.56.165")
-    print("🔌 Port: 9528")
-    print("🌍 Domain: https://shabdprakash-thakkar.online")
+    print(f"📍 Server IP: {SERVER_IP}")
+    print(f"🔌 Port: {SERVER_PORT}")
+    print(f"🌍 Domain: {SERVER_DOMAIN}")
     print("=" * 60 + "\n")
 
     # Small delay to let Discord bot start first
@@ -75,9 +78,9 @@ def main():
     print("🚀 SUPPORTER BOT - PRODUCTION DEPLOYMENT")
     print("=" * 60)
     print("\n📦 Server Configuration:")
-    print("   • IP Address: 194.164.56.165")
-    print("   • Port: 9528")
-    print("   • Domain: shabdprakash-thakkar.online")
+    print(f"   • IP Address: {SERVER_IP}")
+    print(f"   • Port: {SERVER_PORT}")
+    print(f"   • Domain: {SERVER_DOMAIN}")
     print("   • Environment: Production")
     print("\n🔄 Starting both Discord Bot and Flask Frontend...")
     print("⌨️  Press Ctrl+C to stop all services\n")
@@ -110,8 +113,8 @@ def main():
         print("✅ BOTH SERVICES STARTED SUCCESSFULLY!")
         print("=" * 60)
         print("\n🤖 Discord Bot: Running")
-        print("🌐 Flask Frontend: http://194.164.56.165:9528")
-        print("🌍 Public Domain: https://shabdprakash-thakkar.online")
+        print(f"🌐 Flask Frontend: https://{SERVER_IP}:{SERVER_PORT}")
+        print(f"🌍 Public Domain: {SERVER_DOMAIN}")
         print("\n💡 Both services are now running in production mode!")
         print("⏰ Server will keep running until stopped manually\n")
 

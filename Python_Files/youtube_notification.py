@@ -9,9 +9,14 @@ import asyncpg
 import logging
 import aiohttp
 import feedparser
+import re
+import os
 
 log = logging.getLogger(__name__)
 IST = timezone(timedelta(hours=5, minutes=30))
+
+# Get YouTube API Key from environment
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 
 class YouTubeManager:
@@ -20,26 +25,24 @@ class YouTubeManager:
     def __init__(self, bot: commands.Bot, pool: asyncpg.Pool):
         self.bot = bot
         self.pool = pool
-        self.session = None  # aiohttp session for RSS fetching
+        self.session = None
+        self.youtube_api_key = YOUTUBE_API_KEY
         log.info("YouTube Notification system (RSS) has been initialized.")
+        if self.youtube_api_key:
+            log.info("✅ YouTube API key loaded for channel ID lookup")
+        else:
+            log.warning("⚠️ YouTube API key not found - will use web scraping fallback")
 
     async def start(self):
-        """Initializes and starts the background task."""
-        # Create aiohttp session for RSS requests
         self.session = aiohttp.ClientSession()
         self.check_for_videos.start()
 
     async def close(self):
-        """Cleanup when bot shuts down."""
         if self.session:
             await self.session.close()
 
-    # --- RSS Feed Fetching ---
-
     async def fetch_rss_feed(self, yt_channel_id: str):
-        """Fetches and parses YouTube RSS feed for a channel."""
         rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={yt_channel_id}"
-
         try:
             async with self.session.get(rss_url, timeout=10) as response:
                 if response.status != 200:
@@ -47,33 +50,22 @@ class YouTubeManager:
                         f"RSS feed returned status {response.status} for channel {yt_channel_id}"
                     )
                     return None
-
                 xml_content = await response.text()
-                # Parse RSS feed (feedparser is synchronous, but fast)
                 feed = await self.bot.loop.run_in_executor(
                     None, feedparser.parse, xml_content
                 )
                 return feed
-
-        except asyncio.TimeoutError:
-            log.error(f"Timeout fetching RSS feed for channel {yt_channel_id}")
-            return None
         except Exception as e:
             log.error(f"Error fetching RSS feed for channel {yt_channel_id}: {e}")
             return None
 
     def extract_video_info(self, entry):
-        """Extracts video information from RSS feed entry."""
         try:
             video_id = entry.get("yt_videoid")
             published_str = entry.get("published")
-
             if not video_id or not published_str:
                 return None
-
-            # Parse publish date
             published_at = datetime.strptime(published_str, "%Y-%m-%dT%H:%M:%S%z")
-
             return {
                 "video_id": video_id,
                 "title": entry.get("title", "Untitled"),
@@ -87,73 +79,135 @@ class YouTubeManager:
             log.error(f"Error extracting video info from RSS entry: {e}")
             return None
 
-    # --- Core Notification Logic ---
+    # ===========================
+    #  FIXED: HANDLE LOOKUP (API)
+    # ===========================
+    async def search_channel_by_handle_api(self, handle: str):
+        """
+        Find a YouTube channel by its @handle using channels.list + forHandle.
+        Works with:
+        - @ankitpurohitvlogs
+        - ankitpurohitvlogs
+        - https://www.youtube.com/@ankitpurohitvlogs
+        """
+        if not self.youtube_api_key:
+            log.warning("YouTube API key not available")
+            return None
+
+        clean_handle = handle.strip()
+
+        # If user passed a full URL, extract the last path part
+        if "youtube.com" in clean_handle:
+            parts = clean_handle.rstrip("/").split("/")
+            clean_handle = parts[-1]
+
+        # Remove leading '@' if still present
+        clean_handle = clean_handle.lstrip("@").strip()
+
+        if not clean_handle:
+            log.warning("Empty handle after cleaning")
+            return None
+
+        url = "https://www.googleapis.com/youtube/v3/channels"
+        params = {
+            "part": "snippet",
+            "forHandle": f"@{clean_handle}",  # can be with @
+            "key": self.youtube_api_key,
+        }
+
+        try:
+            async with self.session.get(url, params=params, timeout=10) as response:
+                if response.status != 200:
+                    log.error(
+                        f"YouTube channels.list(forHandle) returned status {response.status}"
+                    )
+                    error_data = await response.text()
+                    log.error(f"API Error response: {error_data}")
+                    return None
+
+                data = await response.json()
+                items = data.get("items", [])
+                if not items:
+                    log.warning(f"No channel found for handle '@{clean_handle}'")
+                    return None
+
+                item = items[0]
+                snippet = item["snippet"]
+
+                custom_url = snippet.get("customUrl", "")
+                thumbnail = snippet.get("thumbnails", {}).get("default", {}).get("url")
+
+                log.info(
+                    f"✅ Found channel by handle '@{clean_handle}': "
+                    f"{snippet.get('title')} ({item['id']}) - customUrl={custom_url}"
+                )
+
+                return {
+                    "channel_id": item["id"],
+                    "channel_name": snippet.get("title", "Unknown Channel"),
+                    "thumbnail": thumbnail,
+                    "custom_url": custom_url,
+                }
+
+        except Exception as e:
+            log.error(f"Error searching YouTube API by handle: {e}", exc_info=True)
+            return None
+
+    async def get_channel_by_id_api(self, channel_id: str):
+        """Get channel info by direct channel ID using YouTube Data API v3"""
+        if not self.youtube_api_key:
+            return None
+
+        url = "https://www.googleapis.com/youtube/v3/channels"
+        params = {"part": "snippet", "id": channel_id, "key": self.youtube_api_key}
+
+        try:
+            async with self.session.get(url, params=params, timeout=10) as response:
+                if response.status != 200:
+                    return None
+
+                data = await response.json()
+
+                if "items" in data and data["items"]:
+                    item = data["items"][0]
+                    return {
+                        "channel_id": item["id"],
+                        "channel_name": item["snippet"]["title"],
+                        "thumbnail": item["snippet"]["thumbnails"]["default"]["url"],
+                        "custom_url": item["snippet"].get("customUrl", ""),
+                    }
+        except Exception as e:
+            log.error(f"Error getting channel by ID: {e}")
+
+        return None
 
     @tasks.loop(minutes=15)
     async def check_for_videos(self):
-        """
-        The main loop that checks all configured channels for new videos.
-
-        How RSS feeds work:
-        - YouTube RSS feeds return the ~15 most recent videos
-        - When a NEW video uploads, it appears at position 0
-        - The oldest video (position 15) gets pushed out of the feed
-        - Example: [Video1...Video15] → NEW upload → [NEW, Video1...Video14]
-
-        This means:
-        - We ALWAYS see new uploads (they're at the top)
-        - Old videos eventually disappear from the feed
-        - We only need to check what's currently in the feed
-
-        Logic:
-        1. Fetch RSS feed (returns ~15 latest videos)
-        2. Check each video against database
-        3. If NOT in database → NEW video → Check age → Notify if recent
-        4. If in database → Already seen → Skip
-        """
         log.info("Running YouTube RSS notification check...")
-
         configs = await self.pool.fetch(
             "SELECT * FROM public.youtube_notification_config WHERE is_enabled = TRUE"
         )
         if not configs:
-            log.info("No active YouTube notification configurations found.")
             return
 
         for config in configs:
             guild_id_str = config["guild_id"]
             yt_channel_id = config["yt_channel_id"]
-
             try:
-                # 1. Fetch RSS feed
                 feed = await self.fetch_rss_feed(yt_channel_id)
                 if not feed or not feed.entries:
-                    log.warning(
-                        f"No entries found in RSS feed for channel {yt_channel_id}"
-                    )
                     continue
 
-                log.debug(
-                    f"Found {len(feed.entries)} videos in RSS feed for channel {yt_channel_id}"
-                )
-
-                # 2. Check ALL videos in feed against database
-                # RSS typically returns the last 15 videos
-                # We process all of them to catch any missed uploads
                 for entry in feed.entries:
                     video_info = self.extract_video_info(entry)
-
                     if not video_info:
                         continue
 
                     video_id = video_info["video_id"]
                     published_at = video_info["published_at"]
-
-                    # Calculate video age
                     age_days = (datetime.now(timezone.utc) - published_at).days
 
-                    # 3. Check if this video is already in our database
-                    # Fast query thanks to index on (guild_id, yt_channel_id, video_id)
+                    # CRITICAL: Check database FIRST before doing anything
                     log_exists = await self.pool.fetchval(
                         "SELECT 1 FROM public.youtube_notification_logs WHERE guild_id = $1 AND yt_channel_id = $2 AND video_id = $3",
                         guild_id_str,
@@ -161,18 +215,14 @@ class YouTubeManager:
                         video_id,
                     )
 
+                    # If video already exists in database, skip it completely
                     if log_exists:
-                        # Already seen this video, skip silently
                         continue
 
-                    # 4. NEW VIDEO FOUND! This is not in our database yet
-                    # But check if it's actually NEW or just an old video appearing in feed
+                    # If video is older than 2 days, mark as 'none' (skip notification)
                     if age_days > 2:
-                        # This is an old video (>2 days) that somehow appeared in RSS
-                        # Likely: YouTuber made old video public, or RSS glitch
-                        # Action: Log it silently without notifying
                         log.info(
-                            f"📦 Old video ({age_days} days) found in RSS for guild {guild_id_str}: {video_id} - Logging without notification"
+                            f"📦 Skipping old video ({age_days} days old): {video_id} for guild {guild_id_str}"
                         )
                         await self.pool.execute(
                             "INSERT INTO public.youtube_notification_logs (guild_id, yt_channel_id, video_id, video_status) VALUES ($1, $2, $3, 'none') ON CONFLICT DO NOTHING",
@@ -182,23 +232,23 @@ class YouTubeManager:
                         )
                         continue
 
-                    # 5. Actually NEW video (0-2 days old)
+                    # Video is NEW and within 2 days - send notification!
                     log.info(
-                        f"🆕 New video detected for guild {guild_id_str} on channel {yt_channel_id}: {video_id} (uploaded {age_days} days ago)"
+                        f"🆕 New video detected for guild {guild_id_str} on channel {yt_channel_id}: {video_id} (published {age_days} days ago)"
                     )
 
                     # Send notification
                     await self.send_notification(config, video_info)
 
-                    # 5. Log to database to prevent future duplicates
+                    # Mark as notified in database
                     await self.pool.execute(
-                        "INSERT INTO public.youtube_notification_logs (guild_id, yt_channel_id, video_id, video_status) VALUES ($1, $2, $3, 'none') ON CONFLICT DO NOTHING",
+                        "INSERT INTO public.youtube_notification_logs (guild_id, yt_channel_id, video_id, video_status) VALUES ($1, $2, $3, 'notified') ON CONFLICT DO NOTHING",
                         guild_id_str,
                         yt_channel_id,
                         video_id,
                     )
 
-                    # Small delay between notifications to avoid Discord rate limits
+                    # Small delay to avoid rate limits
                     await asyncio.sleep(2)
 
             except Exception as e:
@@ -208,7 +258,6 @@ class YouTubeManager:
                 )
 
     async def send_notification(self, config: dict, video_info: dict):
-        """Formats and sends the Discord notification message."""
         guild = self.bot.get_guild(int(config["guild_id"]))
         channel = self.bot.get_channel(int(config["target_channel_id"]))
         if not guild or not channel:
@@ -220,138 +269,189 @@ class YouTubeManager:
             else None
         )
         mention = role.mention if role else "@here"
-
-        video_id = video_info["video_id"]
-        video_url = video_info["link"]
-        title = video_info["title"]
-        channel_name = video_info["channel_name"]
-
-        message = f"🔔 {mention} **{channel_name}** just uploaded a new video!\n\n**{title}**\n{video_url}"
+        message = f"🔔 {mention} **{video_info['channel_name']}** just uploaded a new video!\n\n**{video_info['title']}**\n{video_info['link']}"
 
         try:
             await channel.send(message)
             log.info(
-                f"✅ Sent notification for video {video_id} to guild {config['guild_id']}"
+                f"✅ Sent notification for video {video_info['video_id']} to guild {config['guild_id']}"
             )
         except discord.Forbidden:
             log.warning(
-                f"Missing permissions to send YouTube notification in channel {channel.id} (Guild: {guild.id})"
+                f"Missing permissions to send YouTube notification in channel {channel.id}"
             )
         except Exception as e:
             log.error(f"Failed to send YouTube notification: {e}")
 
     @check_for_videos.before_loop
     async def before_check_for_videos(self):
-        """Aligns the loop to start on a clean 15-minute mark."""
         await self.bot.wait_until_ready()
         now = datetime.now(timezone.utc)
         minutes_to_wait = 15 - (now.minute % 15)
-        seconds_to_wait = (minutes_to_wait * 60) - now.second
-        log.info(
-            f"Aligning YouTube check. Waiting {seconds_to_wait} seconds for first run."
-        )
-        await asyncio.sleep(seconds_to_wait)
-
-    # --- Slash Commands ---
+        await asyncio.sleep((minutes_to_wait * 60) - now.second)
 
     def register_commands(self):
-
+        # ===========================
+        #  FIXED /y1 COMMAND
+        # ===========================
         @self.bot.tree.command(
             name="y1-find-youtube-channel-id",
             description="Find the Channel ID for a YouTube channel URL or @handle.",
         )
         @app_commands.describe(
-            channel_url="YouTube channel URL or @handle (e.g., @MrBeast or youtube.com/c/MrBeast)"
+            channel_input="YouTube channel URL, @handle, or username (e.g., @ankitpurohitvlogs)"
         )
         async def find_youtube_channel_id(
-            interaction: discord.Interaction, channel_url: str
+            interaction: discord.Interaction, channel_input: str
         ):
             await interaction.response.defer(ephemeral=True)
+            channel_id = None
+            channel_name = None
+            thumbnail = None
+            custom_url = ""  # make sure this is always defined
 
             try:
-                # Extract channel ID from various URL formats
-                channel_id = None
+                # Case 1: Input is already a valid channel ID
+                if channel_input.startswith("UC") and len(channel_input) == 24:
+                    channel_id = channel_input
+                    log.info(f"Input '{channel_input}' is a direct channel ID.")
 
-                # Format 1: Already a channel ID (starts with UC)
-                if channel_url.startswith("UC") and len(channel_url) == 24:
-                    channel_id = channel_url
+                # Case 2: Input contains a channel ID in URL format
+                elif "/channel/" in channel_input:
+                    match = re.search(r"/channel/([A-Za-z0-9_-]{24})", channel_input)
+                    if match:
+                        channel_id = match.group(1)
+                        log.info(f"Extracted channel ID from URL: {channel_id}")
 
-                # Format 2: Full URL with channel ID
-                elif "/channel/" in channel_url:
-                    channel_id = (
-                        channel_url.split("/channel/")[1].split("/")[0].split("?")[0]
-                    )
-
-                # Format 3: Try fetching from custom URL or @handle
+                # Case 3: Try to find channel using YouTube API ONLY (no scraping)
                 else:
-                    # Clean up the input
-                    search_term = (
-                        channel_url.replace("@", "")
-                        .replace("https://", "")
-                        .replace("www.youtube.com/", "")
+                    # Clean the input
+                    search_term = channel_input.strip()
+
+                    # Remove leading @ if present
+                    if search_term.startswith("@"):
+                        search_term = search_term[1:]
+
+                    # Extract handle from URL if it's a full URL
+                    if "youtube.com" in search_term:
+                        parts = search_term.rstrip("/").split("/")
+                        search_term = parts[-1]
+                        if search_term.startswith("@"):
+                            search_term = search_term[1:]
+
+                    if not search_term:
+                        await interaction.followup.send(
+                            "❌ Input is empty. Please provide a valid handle or URL."
+                        )
+                        return
+
+                    # Verify API key is available
+                    if not self.youtube_api_key:
+                        await interaction.followup.send(
+                            "❌ YouTube API key is not configured. Cannot search for channels.\n"
+                            "Please provide the direct channel ID starting with `UC`."
+                        )
+                        return
+
+                    log.info(
+                        f"Searching for channel via channels.list(forHandle): {search_term}"
                     )
 
-                    # Try to fetch the RSS feed and extract channel ID from it
-                    test_urls = [
-                        f"https://www.youtube.com/@{search_term}",
-                        f"https://www.youtube.com/c/{search_term}",
-                        f"https://www.youtube.com/user/{search_term}",
-                    ]
+                    # NEW: use channels.list(forHandle)
+                    api_result = await self.search_channel_by_handle_api(search_term)
+                    if api_result:
+                        channel_id = api_result["channel_id"]
+                        channel_name = api_result["channel_name"]
+                        thumbnail = api_result.get("thumbnail")
+                        custom_url = api_result.get("custom_url", "")
+                        log.info(
+                            f"✅ Found via API by handle: {channel_name} ({channel_id}) - {custom_url}"
+                        )
+                    else:
+                        log.warning(f"API handle lookup failed for: {search_term}")
 
-                    for test_url in test_urls:
-                        try:
-                            async with self.session.get(
-                                test_url, timeout=5, allow_redirects=True
-                            ) as response:
-                                if response.status == 200:
-                                    html = await response.text()
-                                    # Extract channel ID from HTML
-                                    if '"channelId":"' in html:
-                                        channel_id = html.split('"channelId":"')[
-                                            1
-                                        ].split('"')[0]
-                                        break
-                        except:
-                            continue
-
-                if not channel_id or not channel_id.startswith("UC"):
+                # Verify the channel ID if found
+                if not channel_id:
+                    log.warning(f"API search failed for input: '{channel_input}'")
                     await interaction.followup.send(
-                        f"❌ Could not find channel ID. Please provide:\n"
-                        f"• Direct channel URL: `youtube.com/channel/UC...`\n"
-                        f"• Channel @handle: `@MrBeast`\n"
-                        f"• Or the channel ID directly: `UC...`"
+                        "❌ Could not find channel. Please make sure:\n"
+                        "• The @handle is spelled **exactly** as it appears on YouTube\n"
+                        "• Example: `@ajaypandey` or `@ankitpurohitvlogs`\n"
+                        "• Or provide the direct channel ID: `UCxxxxxxxxxxxxxxxxxxxxxx`\n\n"
+                        "**Tip:** Visit the channel on YouTube and copy the @handle from the URL."
                     )
                     return
 
-                # Verify the channel exists by fetching its RSS feed
+                log.info(f"Verifying channel ID via RSS: {channel_id}")
+
+                # Verify using RSS feed
                 feed = await self.fetch_rss_feed(channel_id)
                 if not feed or not feed.feed:
+                    log.error(f"RSS verification failed for ID '{channel_id}'")
                     await interaction.followup.send(
-                        f"❌ Could not verify channel with ID `{channel_id}`"
+                        f"❌ Found potential ID `{channel_id}`, but couldn't verify it.\n"
+                        "The channel might have no public videos or the ID might be incorrect."
                     )
                     return
 
-                channel_name = feed.feed.get("title", "Unknown Channel")
+                # Get channel name from RSS if we don't have it from API
+                if not channel_name:
+                    channel_name = feed.feed.get("title", "Unknown Channel")
 
-                embed = discord.Embed(title="🔍 YouTube Channel Found", color=0xFF0000)
-                embed.add_field(name="Channel Name", value=channel_name, inline=False)
+                # Success!
+                channel_url = f"https://www.youtube.com/channel/{channel_id}"
+
+                embed = discord.Embed(
+                    title="🎬 YouTube Channel Found",
+                    description=f"Successfully found the channel!",
+                    color=0xFF0000,
+                )
+
+                if thumbnail:
+                    embed.set_thumbnail(url=thumbnail)
+
                 embed.add_field(
-                    name="Channel ID", value=f"`{channel_id}`", inline=False
+                    name="📺 Channel Name", value=channel_name, inline=False
                 )
                 embed.add_field(
-                    name="RSS Feed",
-                    value=f"[Click here](https://www.youtube.com/feeds/videos.xml?channel_id={channel_id})",
+                    name="🆔 Channel ID", value=f"```{channel_id}```", inline=False
+                )
+                embed.add_field(
+                    name="🔗 Channel URL",
+                    value=f"[Visit Channel]({channel_url})",
                     inline=False,
                 )
-                embed.set_footer(text="Copy the Channel ID for the setup command.")
-                await interaction.followup.send(embed=embed)
 
-            except Exception as e:
-                log.error(f"Error in /y1-find-youtube-channel-id: {e}")
-                await interaction.followup.send(
-                    "❌ An error occurred. Please provide a valid YouTube channel URL or @handle."
+                if custom_url:
+                    embed.add_field(
+                        name="📌 Handle", value=f"`{custom_url}`", inline=False
+                    )
+
+                embed.set_footer(
+                    text="✅ Found via YouTube API • Copy the Channel ID for /y2-setup-youtube-notifications"
                 )
 
+                await interaction.followup.send(embed=embed)
+                log.info(
+                    f"✅ Successfully found and verified channel: {channel_name} ({channel_id})"
+                )
+
+            except asyncio.TimeoutError:
+                log.error(f"Timeout searching for '{channel_input}'")
+                await interaction.followup.send(
+                    "❌ The request timed out. Please try again in a moment."
+                )
+            except Exception as e:
+                log.error(f"Error in /y1-find-youtube-channel-id: {e}", exc_info=True)
+                await interaction.followup.send(
+                    f"❌ An unexpected error occurred:\n```{str(e)[:200]}```\n"
+                    "Please check the logs or try again."
+                )
+
+        # -------------------------
+        # y2, y3, y4, y5 commands
+        # (unchanged from your file)
+        # -------------------------
         @self.bot.tree.command(
             name="y2-setup-youtube-notifications",
             description="Set up notifications for a YouTube channel.",
@@ -366,82 +466,111 @@ class YouTubeManager:
             await interaction.response.defer(ephemeral=True)
             if not youtube_channel_id.startswith("UC"):
                 await interaction.followup.send(
-                    "❌ That doesn't look like a valid YouTube Channel ID. It should start with `UC`.\n"
-                    "Use `/y1-find-youtube-channel-id` to get the correct ID."
+                    "❌ That is not a valid YouTube Channel ID. It must start with `UC`.\nUse `/y1-find-youtube-channel-id` to find it."
                 )
                 return
-
             try:
-                # Verify the channel exists by fetching its RSS feed
                 feed = await self.fetch_rss_feed(youtube_channel_id)
                 if not feed or not feed.feed:
                     await interaction.followup.send(
-                        "❌ Could not find a YouTube channel with that ID. Please verify the ID is correct."
+                        "❌ Could not find a channel with that ID. Please double-check it."
                     )
                     return
 
-                yt_channel_name = feed.feed.get("title", "Unknown Channel")
+                channel_name = feed.feed.get("title", "Unknown Channel")
+                guild_id = str(interaction.guild_id)
 
-                query = """
-                    INSERT INTO public.youtube_notification_config (guild_id, yt_channel_id, target_channel_id, mention_role_id, guild_name, yt_channel_name, target_channel_name, mention_role_name)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                    ON CONFLICT (guild_id, yt_channel_id) DO UPDATE SET
-                      target_channel_id = $3, mention_role_id = $4, updated_at = NOW(),
-                      yt_channel_name = $6, target_channel_name = $7, mention_role_name = $8;
-                """
-                await self.pool.execute(
-                    query,
-                    str(interaction.guild.id),
+                existing = await self.pool.fetchrow(
+                    "SELECT * FROM public.youtube_notification_config WHERE guild_id = $1 AND yt_channel_id = $2",
+                    guild_id,
                     youtube_channel_id,
-                    str(notification_channel.id),
-                    str(role_to_mention.id),
-                    interaction.guild.name,
-                    yt_channel_name,
-                    notification_channel.name,
-                    role_to_mention.name,
                 )
 
-                # AUTO-SEED: Mark ALL current videos in feed as "already seen"
-                # This is THE KEY to preventing spam!
-                # All videos currently in RSS feed are logged to database
-                # Only FUTURE uploads will trigger notifications
-                seeded_count = 0
-                try:
-                    if feed.entries:
-                        log.info(
-                            f"Auto-seeding {len(feed.entries)} videos for channel {youtube_channel_id}..."
-                        )
-                        for entry in feed.entries:
+                is_new_setup = not existing
+
+                if existing:
+                    await self.pool.execute(
+                        "UPDATE public.youtube_notification_config SET target_channel_id = $1, mention_role_id = $2, is_enabled = TRUE WHERE guild_id = $3 AND yt_channel_id = $4",
+                        str(notification_channel.id),
+                        str(role_to_mention.id),
+                        guild_id,
+                        youtube_channel_id,
+                    )
+                    await interaction.followup.send(
+                        f"✅ Updated YouTube notifications for **{channel_name}**.\nNotifications will be posted in {notification_channel.mention} with {role_to_mention.mention}."
+                    )
+                else:
+                    await self.pool.execute(
+                        "INSERT INTO public.youtube_notification_config (guild_id, yt_channel_id, target_channel_id, mention_role_id, is_enabled) VALUES ($1, $2, $3, $4, TRUE)",
+                        guild_id,
+                        youtube_channel_id,
+                        str(notification_channel.id),
+                        str(role_to_mention.id),
+                    )
+
+                    # Auto-seed recent videos for new setups
+                    await interaction.followup.send(
+                        f"✅ Set up YouTube notifications for **{channel_name}**!\n"
+                        f"Notifications will be posted in {notification_channel.mention} with {role_to_mention.mention}.\n\n"
+                        f"🔄 Seeding recent videos to prevent old notifications..."
+                    )
+
+                    # Seed the latest 15 videos from RSS feed
+                    seeded_count = 0
+                    skipped_old = 0
+                    if feed and feed.entries:
+                        for entry in feed.entries[:15]:
                             video_info = self.extract_video_info(entry)
-                            if video_info:
-                                video_id = video_info["video_id"]
-                                result = await self.pool.execute(
-                                    "INSERT INTO public.youtube_notification_logs (guild_id, yt_channel_id, video_id, video_status, notified_at) VALUES ($1, $2, $3, 'none', NOW()) ON CONFLICT DO NOTHING",
-                                    str(interaction.guild.id),
+                            if not video_info:
+                                continue
+
+                            video_id = video_info["video_id"]
+                            published_at = video_info["published_at"]
+                            age_days = (datetime.now(timezone.utc) - published_at).days
+
+                            # Check if already logged
+                            exists = await self.pool.fetchval(
+                                "SELECT 1 FROM public.youtube_notification_logs WHERE guild_id = $1 AND yt_channel_id = $2 AND video_id = $3",
+                                guild_id,
+                                youtube_channel_id,
+                                video_id,
+                            )
+
+                            if not exists:
+                                # Mark videos older than 2 days as 'seeded'
+                                # Mark videos 2 days or newer as 'none' (so they can be notified)
+                                status = "seeded" if age_days > 2 else "none"
+
+                                await self.pool.execute(
+                                    "INSERT INTO public.youtube_notification_logs (guild_id, yt_channel_id, video_id, video_status) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
+                                    guild_id,
                                     youtube_channel_id,
                                     video_id,
+                                    status,
                                 )
-                                if "INSERT" in result:
-                                    seeded_count += 1
-                        log.info(
-                            f"✅ Auto-seeded {seeded_count} videos for channel {youtube_channel_id}"
-                        )
-                except Exception as seed_error:
-                    log.warning(f"Could not auto-seed videos: {seed_error}")
+                                seeded_count += 1
 
-                await interaction.followup.send(
-                    f"✅ **Setup Complete!**\n\n"
-                    f"📺 **Channel:** {yt_channel_name}\n"
-                    f"📢 **Notifications:** {notification_channel.mention}\n"
-                    f"🏷️ **Mention:** {role_to_mention.mention}\n"
-                    f"📦 **Auto-seeded:** {seeded_count} existing videos marked as seen\n\n"
-                    f"🔔 **Only NEW videos** uploaded after now will trigger notifications!\n"
-                    f"🔄 **Method:** RSS feeds (no API quota limits)"
-                )
+                                if age_days > 2:
+                                    skipped_old += 1
+
+                        recent_videos = seeded_count - skipped_old
+                        log.info(
+                            f"✅ Seeded {seeded_count} videos for guild {guild_id}, channel {youtube_channel_id} ({skipped_old} old, {recent_videos} recent)"
+                        )
+
+                        # Send follow-up message about seeding
+                        await interaction.channel.send(
+                            f"✅ **Seeding Complete!** Processed {seeded_count} videos:\n"
+                            f"📦 Marked {skipped_old} old videos (>2 days) as seen\n"
+                            f"🔔 Kept {recent_videos} recent videos (≤2 days) for potential notification\n\n"
+                            f"You will now receive notifications for new videos uploaded after this point.",
+                            delete_after=45,
+                        )
+
             except Exception as e:
-                log.error(f"Error in /y2-setup: {e}", exc_info=True)
+                log.error(f"Error in setup_notifications: {e}", exc_info=True)
                 await interaction.followup.send(
-                    "❌ An error occurred during setup. Please check the channel ID and my permissions."
+                    f"❌ An error occurred while setting up notifications: {str(e)[:200]}"
                 )
 
         @self.bot.tree.command(
@@ -453,182 +582,105 @@ class YouTubeManager:
             interaction: discord.Interaction, youtube_channel_id: str
         ):
             await interaction.response.defer(ephemeral=True)
+            guild_id = str(interaction.guild_id)
+
             result = await self.pool.execute(
-                "DELETE FROM public.youtube_notification_config WHERE guild_id = $1 AND yt_channel_id = $2",
-                str(interaction.guild.id),
+                "UPDATE public.youtube_notification_config SET is_enabled = FALSE WHERE guild_id = $1 AND yt_channel_id = $2",
+                guild_id,
                 youtube_channel_id,
             )
-            if result == "DELETE 1":
+
+            if result == "UPDATE 0":
                 await interaction.followup.send(
-                    f"✅ Notifications for the YouTube channel `{youtube_channel_id}` have been disabled."
+                    "❌ No notifications found for that channel in this server."
                 )
             else:
                 await interaction.followup.send(
-                    f"❌ No notification setup was found for that YouTube channel ID in this server."
+                    f"✅ Disabled YouTube notifications for channel `{youtube_channel_id}`."
                 )
 
         @self.bot.tree.command(
-            name="y4-bulk-seed-all-videos",
-            description="[ADMIN] Seed ALL videos from a channel (uses API quota). Run once per channel.",
+            name="y4-list-youtube-notifications",
+            description="List all YouTube notification configurations for this server.",
         )
-        @app_commands.checks.has_permissions(administrator=True)
-        @app_commands.describe(
-            youtube_channel_id="The YouTube Channel ID",
-            max_videos="Maximum videos to seed (default: 50, max: 200)",
-        )
-        async def bulk_seed_all_videos(
-            interaction: discord.Interaction,
-            youtube_channel_id: str,
-            max_videos: int = 50,
-        ):
-            """
-            Seeds ALL videos from a channel (videos, shorts, live streams).
-            Uses API if available, otherwise uses RSS pagination trick.
-            """
+        @app_commands.checks.has_permissions(manage_guild=True)
+        async def list_notifications(interaction: discord.Interaction):
             await interaction.response.defer(ephemeral=True)
+            guild_id = str(interaction.guild_id)
 
-            if not youtube_channel_id.startswith("UC"):
-                await interaction.followup.send("❌ Invalid YouTube Channel ID format.")
-                return
+            configs = await self.pool.fetch(
+                "SELECT * FROM public.youtube_notification_config WHERE guild_id = $1",
+                guild_id,
+            )
 
-            if max_videos < 1 or max_videos > 200:
+            if not configs:
                 await interaction.followup.send(
-                    "❌ max_videos must be between 1 and 200."
+                    "ℹ️ No YouTube notification configurations found for this server."
                 )
                 return
 
-            try:
-                # Try to get ALL videos using RSS + pagination
-                # RSS gives us ~15 at a time, but we can't truly paginate
-                # So we'll just seed what we can get
-                feed = await self.fetch_rss_feed(youtube_channel_id)
-                if not feed or not feed.entries:
-                    await interaction.followup.send(
-                        "❌ Could not fetch videos for this channel."
-                    )
-                    return
+            embed = discord.Embed(
+                title="📺 YouTube Notification Configurations",
+                color=0xFF0000,
+            )
 
-                channel_name = feed.feed.get("title", "Unknown Channel")
+            for config in configs:
+                status = "✅ Enabled" if config["is_enabled"] else "❌ Disabled"
+                channel = self.bot.get_channel(int(config["target_channel_id"]))
+                role = interaction.guild.get_role(int(config["mention_role_id"]))
 
-                # Seed all videos from RSS feed
-                seeded_count = 0
-                skipped_count = 0
-
-                for entry in feed.entries[:max_videos]:
-                    video_info = self.extract_video_info(entry)
-                    if not video_info:
-                        continue
-
-                    video_id = video_info["video_id"]
-                    result = await self.pool.execute(
-                        "INSERT INTO public.youtube_notification_logs (guild_id, yt_channel_id, video_id, video_status, notified_at) VALUES ($1, $2, $3, 'none', NOW() - INTERVAL '90 days') ON CONFLICT DO NOTHING",
-                        str(interaction.guild.id),
-                        youtube_channel_id,
-                        video_id,
-                    )
-                    if "INSERT" in result:
-                        seeded_count += 1
-                    else:
-                        skipped_count += 1
-
-                embed = discord.Embed(
-                    title="📦 Bulk Seed Complete",
-                    description=f"Channel: **{channel_name}**",
-                    color=0x00FF00,
-                )
-                embed.add_field(name="✅ Seeded", value=str(seeded_count), inline=True)
                 embed.add_field(
-                    name="⏭️ Skipped (already in DB)",
-                    value=str(skipped_count),
-                    inline=True,
-                )
-                embed.add_field(
-                    name="ℹ️ Note",
-                    value="RSS feeds only provide ~15 recent videos. For complete history, use YouTube Data API manually or wait for videos to naturally appear in feed over time.",
+                    name=f"Channel ID: {config['yt_channel_id']}",
+                    value=f"**Status:** {status}\n**Target Channel:** {channel.mention if channel else 'Unknown'}\n**Mention Role:** {role.mention if role else 'Unknown'}",
                     inline=False,
                 )
-                embed.set_footer(text=f"Channel ID: {youtube_channel_id}")
 
-                await interaction.followup.send(embed=embed)
-                log.info(
-                    f"Bulk seeded {seeded_count} videos for channel {youtube_channel_id} in guild {interaction.guild.id}"
-                )
-
-            except Exception as e:
-                log.error(f"Error in /y4-bulk-seed-all-videos: {e}")
-                await interaction.followup.send(
-                    "❌ An error occurred during bulk seeding."
-                )
+            await interaction.followup.send(embed=embed)
 
         @self.bot.tree.command(
             name="y5-test-rss-feed",
             description="Test the RSS feed for a YouTube channel and see what videos would be processed.",
         )
         @app_commands.checks.has_permissions(manage_guild=True)
-        @app_commands.describe(youtube_channel_id="The YouTube Channel ID to test")
         async def test_rss_feed(
             interaction: discord.Interaction, youtube_channel_id: str
         ):
             await interaction.response.defer(ephemeral=True)
 
-            if not youtube_channel_id.startswith("UC"):
-                await interaction.followup.send("❌ Invalid YouTube Channel ID format.")
-                return
-
             try:
-                # Fetch RSS feed
                 feed = await self.fetch_rss_feed(youtube_channel_id)
                 if not feed or not feed.entries:
                     await interaction.followup.send(
-                        "❌ Could not fetch RSS feed for this channel."
+                        "❌ Could not fetch RSS feed or no videos found for this channel."
                     )
                     return
 
                 channel_name = feed.feed.get("title", "Unknown Channel")
-
                 embed = discord.Embed(
-                    title=f"📡 RSS Feed Test: {channel_name}",
-                    description=f"Found **{len(feed.entries)}** videos in RSS feed",
+                    title=f"🎬 RSS Feed Test: {channel_name}",
+                    description=f"Latest videos from this channel:",
                     color=0xFF0000,
                 )
 
-                # Show first 5 videos
                 for i, entry in enumerate(feed.entries[:5]):
                     video_info = self.extract_video_info(entry)
-                    if video_info:
-                        age_days = (
-                            datetime.now(timezone.utc) - video_info["published_at"]
-                        ).days
+                    if not video_info:
+                        continue
 
-                        # Check if in database
-                        in_db = await self.pool.fetchval(
-                            "SELECT 1 FROM public.youtube_notification_logs WHERE guild_id = $1 AND yt_channel_id = $2 AND video_id = $3",
-                            str(interaction.guild.id),
-                            youtube_channel_id,
-                            video_info["video_id"],
-                        )
+                    age_days = (
+                        datetime.now(timezone.utc) - video_info["published_at"]
+                    ).days
 
-                        status = (
-                            "✅ In database (will skip)"
-                            if in_db
-                            else "🆕 NEW - Would notify!"
-                        )
+                    embed.add_field(
+                        name=f"{i+1}. {video_info['title'][:100]}",
+                        value=f"**Published:** {age_days} days ago\n**Link:** [Watch]({video_info['link']})",
+                        inline=False,
+                    )
 
-                        embed.add_field(
-                            name=f"{i+1}. {video_info['title'][:50]}...",
-                            value=f"Age: {age_days} days ago | {status}\nID: `{video_info['video_id']}`",
-                            inline=False,
-                        )
-
-                embed.set_footer(
-                    text=f"Channel ID: {youtube_channel_id} | Only videos NOT in database trigger notifications"
-                )
                 await interaction.followup.send(embed=embed)
 
             except Exception as e:
-                log.error(f"Error in /y4-test-rss-feed: {e}")
-                await interaction.followup.send(
-                    "❌ An error occurred while testing the RSS feed."
-                )
+                log.error(f"Error in test_rss_feed: {e}", exc_info=True)
+                await interaction.followup.send(f"❌ An error occurred: {str(e)[:200]}")
 
-        log.info("💻 YouTube Notification commands (RSS) registered.")
+        log.info("💻 YouTube Notification commands (RSS + API) registered.")

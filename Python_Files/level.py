@@ -319,6 +319,32 @@ class LevelManager:
     async def before_reset_loop(self):
         await self.bot.wait_until_ready()
 
+    @tasks.loop(hours=1)
+    async def cleanup_cooldowns(self):
+        """Remove old cooldown entries to prevent memory leaks."""
+        now = datetime.now()
+        cutoff = now - timedelta(hours=1)
+    
+        # Remove entries older than 1 hour
+        old_keys = [
+            key for key, timestamp in self.message_cooldowns.items()
+            if timestamp < cutoff
+        ]
+    
+        for key in old_keys:
+            del self.message_cooldowns[key]
+    
+        if old_keys:
+            log.info(f"🧹 Cleaned up {len(old_keys)} old cooldown entries")
+
+    # Add to the start() method:
+    async def start(self):
+        self.bot.add_listener(self.on_message, "on_message")
+        self.bot.add_listener(self.on_voice_state_update, "on_voice_state_update")
+        self.reset_loop.start()
+        self.cleanup_cooldowns.start()  # Add this line
+        log.info("Leveling system has been initialized (Award-on-Leave Mode).")
+
     # --- Slash Commands ---
 
     def register_commands(self):

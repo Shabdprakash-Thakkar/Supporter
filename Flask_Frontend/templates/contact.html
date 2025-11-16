@@ -101,7 +101,7 @@
           <!-- Quick Stats -->
           <div class="info-card bg-white p-4 rounded-4 shadow-sm mb-4">
             <h4 class="fw-bold mb-4">
-              <i class="fas fa-info-circle text-primary me-2"></i>Quick Info
+              <i class="fas fa-chart-line text-primary me-2"></i>Live Bot Stats
             </h4>
             <div class="d-flex align-items-center mb-3">
               <div
@@ -111,18 +111,35 @@
               </div>
               <div>
                 <h6 class="mb-0 fw-semibold">Active Servers</h6>
-                <p class="text-muted mb-0">3+ communities</p>
+                <p class="text-muted mb-0" id="contact-stat-servers">
+                  Loading...
+                </p>
               </div>
             </div>
             <div class="d-flex align-items-center mb-3">
               <div
                 class="icon-box bg-success bg-opacity-10 rounded-circle p-3 me-3"
               >
-                <i class="fas fa-clock text-success fs-5"></i>
+                <i class="fas fa-users text-success fs-5"></i>
               </div>
               <div>
-                <h6 class="mb-0 fw-semibold">Response Time</h6>
-                <p class="text-muted mb-0">Within 24 hours</p>
+                <h6 class="mb-0 fw-semibold">Total Users</h6>
+                <p class="text-muted mb-0" id="contact-stat-users">
+                  Loading...
+                </p>
+              </div>
+            </div>
+            <div class="d-flex align-items-center mb-3">
+              <div
+                class="icon-box bg-warning bg-opacity-10 rounded-circle p-3 me-3"
+              >
+                <i class="fas fa-terminal text-warning fs-5"></i>
+              </div>
+              <div>
+                <h6 class="mb-0 fw-semibold">Commands Used</h6>
+                <p class="text-muted mb-0" id="contact-stat-commands">
+                  Loading...
+                </p>
               </div>
             </div>
             <div class="d-flex align-items-center">
@@ -133,8 +150,14 @@
               </div>
               <div>
                 <h6 class="mb-0 fw-semibold">Uptime</h6>
-                <p class="text-muted mb-0">99.9% reliable</p>
+                <p class="text-muted mb-0" id="contact-stat-uptime">99.9%</p>
               </div>
+            </div>
+            <div class="mt-3 text-center">
+              <small class="text-muted">
+                <i class="fas fa-sync-alt me-1"></i>
+                Updates every 3 minutes
+              </small>
             </div>
           </div>
 
@@ -223,6 +246,34 @@
 </section>
 {% endblock %} {% block extra_js %}
 <script>
+  // Fetch and update stats on contact page
+  function updateContactStats() {
+    fetch("/api/stats")
+      .then((response) => response.json())
+      .then((data) => {
+        document.getElementById("contact-stat-servers").textContent =
+          data.total_servers.toLocaleString() + " servers";
+        document.getElementById("contact-stat-users").textContent =
+          data.total_users.toLocaleString() + " users";
+        document.getElementById("contact-stat-commands").textContent =
+          data.commands_used.toLocaleString() + " commands";
+        document.getElementById("contact-stat-uptime").textContent =
+          data.uptime;
+      })
+      .catch((error) => {
+        console.error("Error fetching stats:", error);
+        document.getElementById("contact-stat-servers").textContent =
+          "2+ servers";
+        document.getElementById("contact-stat-users").textContent = "64+ users";
+        document.getElementById("contact-stat-commands").textContent =
+          "0+ commands";
+      });
+  }
+
+  // Update stats on page load
+  updateContactStats();
+
+  // Contact form submission
   document
     .getElementById("contactForm")
     .addEventListener("submit", async function (e) {
