@@ -1,0 +1,484 @@
+{% extends "base.html" %} {% block title %}{{ server.name }} - Dashboard{%
+endblock %} {% block content %}
+
+<section class="server-config-section py-5">
+  <div class="container py-4">
+    <!-- Server Header -->
+    <div class="server-header bg-white p-4 rounded-4 shadow-sm mb-4">
+      <div class="d-flex align-items-center justify-content-between flex-wrap">
+        <div class="d-flex align-items-center mb-3 mb-md-0">
+          {% if server.icon %}
+          <img
+            src="{{ server.icon }}"
+            alt="{{ server.name }}"
+            class="rounded-circle me-3"
+            width="64"
+            height="64"
+          />
+          {% else %}
+          <div
+            class="server-icon-placeholder rounded-circle me-3 bg-primary d-flex align-items-center justify-content-center"
+            style="width: 64px; height: 64px"
+          >
+            <i class="fas fa-server text-white fs-4"></i>
+          </div>
+          {% endif %}
+          <div>
+            <h2 class="mb-1 fw-bold">{{ server.name }}</h2>
+            <p class="text-muted mb-0">
+              <i class="fas fa-cog me-1"></i> Server Configuration
+            </p>
+          </div>
+        </div>
+        <div>
+          <a
+            href="{{ url_for('dashboard_servers') }}"
+            class="btn btn-outline-primary"
+          >
+            <i class="fas fa-arrow-left me-1"></i> Back to Servers
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Configuration Tabs -->
+    <ul class="nav nav-tabs mb-4" id="configTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link active"
+          id="general-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#general"
+          type="button"
+          role="tab"
+        >
+          <i class="fas fa-cogs me-1"></i> General
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link"
+          id="leveling-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#leveling"
+          type="button"
+          role="tab"
+        >
+          <i class="fas fa-trophy me-1"></i> Leveling
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link"
+          id="time-channels-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#time-channels"
+          type="button"
+          role="tab"
+        >
+          <i class="fas fa-clock me-1"></i> Time Channels
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link"
+          id="youtube-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#youtube"
+          type="button"
+          role="tab"
+        >
+          <i class="fab fa-youtube me-1"></i> YouTube
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link"
+          id="channels-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#channels"
+          type="button"
+          role="tab"
+        >
+          <i class="fas fa-shield-alt me-1"></i> Other Controls
+        </button>
+      </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="configTabContent">
+      <!-- ==================== GENERAL SETTINGS TAB ==================== -->
+      <div class="tab-pane fade show active" id="general" role="tabpanel">
+        <div class="config-card bg-white p-4 rounded-4 shadow-sm">
+          <form id="general-settings-form">
+            <h4 class="fw-bold mb-4">
+              <i class="fas fa-tachometer-alt text-primary me-2"></i> XP Rates
+              Configuration
+            </h4>
+            <div id="general-settings-loader" class="text-center py-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="text-muted mt-2">Loading settings...</p>
+            </div>
+            <div id="general-settings-content" class="d-none">
+              <div class="row g-4">
+                <div class="col-md-6">
+                  <label for="xp_per_message" class="form-label fw-semibold"
+                    >XP per Message</label
+                  ><input
+                    type="number"
+                    class="form-control"
+                    id="xp_per_message"
+                    min="0"
+                  /><small class="text-muted">XP for each text message.</small>
+                </div>
+                <div class="col-md-6">
+                  <label for="xp_per_image" class="form-label fw-semibold"
+                    >XP per Image</label
+                  ><input
+                    type="number"
+                    class="form-control"
+                    id="xp_per_image"
+                    min="0"
+                  /><small class="text-muted"
+                    >XP for a message with an image.</small
+                  >
+                </div>
+                <div class="col-md-6">
+                  <label
+                    for="xp_per_minute_in_voice"
+                    class="form-label fw-semibold"
+                    >XP per Minute in Voice</label
+                  ><input
+                    type="number"
+                    class="form-control"
+                    id="xp_per_minute_in_voice"
+                    min="0"
+                  /><small class="text-muted"
+                    >XP for every 60 seconds of voice activity.</small
+                  >
+                </div>
+                <div class="col-md-6">
+                  <label for="voice_xp_limit" class="form-label fw-semibold"
+                    >Voice XP Limit</label
+                  ><input
+                    type="number"
+                    class="form-control"
+                    id="voice_xp_limit"
+                    min="0"
+                  /><small class="text-muted"
+                    >Max voice XP per reset period.</small
+                  >
+                </div>
+              </div>
+              <hr class="my-4" />
+              <button
+                type="submit"
+                class="btn btn-primary btn-lg"
+                id="save-general-settings-btn"
+              >
+                <i class="fas fa-save me-2"></i>Save Settings
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ==================== LEVELING TAB ==================== -->
+      <div class="tab-pane fade" id="leveling" role="tabpanel">
+        <div class="config-card bg-white p-4 rounded-4 shadow-sm">
+          <h4 class="fw-bold mb-3">
+            <i class="fas fa-trophy text-warning me-2"></i>Leveling System
+          </h4>
+          <!-- Inner Tabs for Leveling -->
+          <ul class="nav nav-pills mb-4">
+            <li class="nav-item">
+              <button
+                class="nav-link active"
+                data-bs-toggle="tab"
+                data-bs-target="#level-rewards"
+              >
+                Rewards
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                data-bs-toggle="tab"
+                data-bs-target="#level-leaderboard"
+              >
+                Leaderboard
+              </button>
+            </li>
+            <li class="nav-item">
+              <button
+                class="nav-link"
+                data-bs-toggle="tab"
+                data-bs-target="#level-settings"
+              >
+                Settings
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content">
+            <!-- Level Rewards Pane -->
+            <div class="tab-pane fade show active" id="level-rewards">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <p class="text-muted mb-0">
+                  Assign roles to users when they reach specific levels.
+                </p>
+                <button
+                  class="btn btn-success"
+                  data-bs-toggle="modal"
+                  data-bs-target="#addLevelRewardModal"
+                >
+                  <i class="fas fa-plus me-1"></i>Add Reward
+                </button>
+              </div>
+              <div id="level-rewards-list">
+                <div class="text-center py-4">
+                  <div class="spinner-border spinner-border-sm"></div>
+                </div>
+              </div>
+            </div>
+            <!-- Leaderboard Pane -->
+            <div class="tab-pane fade" id="level-leaderboard">
+              <div class="d-flex justify-content-between mb-3">
+                <input
+                  type="text"
+                  class="form-control w-50"
+                  id="leaderboard-search"
+                  placeholder="Search by username..."
+                />
+                <select class="form-select w-auto" id="leaderboard-limit">
+                  <option value="10">Top 10</option>
+                  <option value="20" selected>Top 20</option>
+                  <option value="50">Top 50</option>
+                </select>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>User</th>
+                      <th>Level</th>
+                      <th>Total XP</th>
+                    </tr>
+                  </thead>
+                  <tbody id="leaderboard-body">
+                    <td colspan="4" class="text-center py-4">
+                      <div class="spinner-border spinner-border-sm"></div>
+                    </td>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <!-- Settings Pane -->
+            <div class="tab-pane fade" id="level-settings">
+              <h5 class="fw-semibold mb-3">Level-Up Notifications</h5>
+              <p class="text-muted">
+                Set the channel where the bot will announce user level-ups.
+              </p>
+              <div id="level-notify-channel-loader" class="text-center">
+                <div class="spinner-border spinner-border-sm"></div>
+              </div>
+              <div id="level-notify-channel-content" class="d-none">
+                <select
+                  class="form-select"
+                  id="level-notify-channel-select"
+                ></select>
+                <button
+                  class="btn btn-primary mt-3"
+                  id="save-notify-channel-btn"
+                >
+                  Save Notification Channel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== TIME CHANNELS TAB ==================== -->
+      <div class="tab-pane fade" id="time-channels" role="tabpanel">
+        <div class="config-card bg-white p-4 rounded-4 shadow-sm">
+          <form id="time-channels-form">
+            <h4 class="fw-bold mb-4">
+              <i class="fas fa-clock text-info me-2"></i> Live Time Channels
+            </h4>
+            <div id="time-channels-loader" class="text-center py-5">
+              <div class="spinner-border text-info"></div>
+              <p class="text-muted mt-2">Loading...</p>
+            </div>
+            <div id="time-channels-content" class="d-none">
+              <div class="form-check form-switch mb-4">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                  id="time-channels-enabled"
+                /><label
+                  class="form-check-label fw-semibold"
+                  for="time-channels-enabled"
+                  >Enable Time Channels</label
+                >
+              </div>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label for="date-channel-select" class="form-label"
+                    >📅 Date Channel</label
+                  ><select
+                    class="form-select"
+                    id="date-channel-select"
+                  ></select>
+                </div>
+                <div class="col-md-4">
+                  <label for="india-channel-select" class="form-label"
+                    >🇮🇳 India Time Channel</label
+                  ><select
+                    class="form-select"
+                    id="india-channel-select"
+                  ></select>
+                </div>
+                <div class="col-md-4">
+                  <label for="japan-channel-select" class="form-label"
+                    >🇯🇵 Japan Time Channel</label
+                  ><select
+                    class="form-select"
+                    id="japan-channel-select"
+                  ></select>
+                </div>
+              </div>
+              <hr class="my-4" />
+              <button
+                type="submit"
+                class="btn btn-info"
+                id="save-time-channels-btn"
+              >
+                <i class="fas fa-save me-2"></i>Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ==================== YOUTUBE & OTHER TABS ==================== -->
+      <div class="tab-pane fade" id="youtube" role="tabpanel">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>YouTube notifications are
+          managed via slash commands.
+        </div>
+      </div>
+      <div class="tab-pane fade" id="channels" role="tabpanel">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>Channel restrictions are
+          managed via slash commands.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Add/Edit Level Reward Modal -->
+<div class="modal fade" id="addLevelRewardModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-gift text-success me-2"></i>Add/Edit Level Reward
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <form id="level-reward-form">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="reward-level" class="form-label"
+              >Level Requirement</label
+            ><input
+              type="number"
+              class="form-control"
+              id="reward-level"
+              required
+              min="1"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="reward-role-select" class="form-label"
+              >Reward Role</label
+            ><select class="form-select" id="reward-role-select" required>
+              <option selected disabled value="">Loading roles...</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Close</button
+          ><button type="submit" class="btn btn-primary">Save Reward</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block extra_css %}
+<style>
+  .server-icon-placeholder {
+    background: linear-gradient(135deg, #5865f2 0%, #7289da 100%);
+  }
+  .config-card {
+    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
+  }
+  .nav-tabs .nav-link {
+    color: #6c757d;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+  }
+  .nav-tabs .nav-link.active {
+    color: #5865f2;
+    border-color: #5865f2;
+    background: none;
+  }
+  .reward-item {
+    border-left: 4px solid #5865f2;
+    background-color: var(--bg-secondary);
+  }
+  .reward-item:hover {
+    background-color: var(--bg-tertiary);
+  }
+  .form-check-input:checked {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+  }
+  .form-switch .form-check-input {
+    width: 3.5em;
+    height: 1.75em;
+  }
+  .nav-pills .nav-link {
+    color: var(--text-secondary);
+  }
+  .nav-pills .nav-link.active {
+    background-color: #5865f2;
+    color: white;
+  }
+</style>
+{% endblock %} {% block extra_js %}
+<script>
+  const GUILD_ID = "{{ server.id }}";
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

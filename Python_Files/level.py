@@ -6,10 +6,11 @@ from discord.ext import commands, tasks
 from datetime import datetime, timezone, timedelta
 import asyncpg
 import logging
+import time
 
 log = logging.getLogger(__name__)
 IST = timezone(timedelta(hours=5, minutes=30))
-VOICE_XP_LIMIT = 1500
+SETTINGS_CACHE_DURATION = 300  # 5 minutes in seconds
 
 
 class LevelManager:
@@ -21,14 +22,52 @@ class LevelManager:
         self.voice_sessions = {}
         self.user_cache = {}
         self.message_cooldowns = {}
-        
+        self.settings_cache = {}  # Cache for guild-specific settings
 
     async def start(self):
-        """Starts the manager by adding event listeners and the reset loop."""
+        """Starts the manager by adding event listeners and loops."""
         self.bot.add_listener(self.on_message, "on_message")
         self.bot.add_listener(self.on_voice_state_update, "on_voice_state_update")
         self.reset_loop.start()
-        log.info("Leveling system has been initialized (Award-on-Leave Mode).")
+        self.cleanup_cooldowns.start()
+        log.info("Leveling system has been initialized (Dynamic Settings Mode).")
+
+    # --- Settings Management ---
+    async def get_guild_settings(self, guild_id: int) -> dict:
+        """
+        Retrieves leveling settings for a guild, using a cache.
+        If settings don't exist, creates them with default values.
+        """
+        now = time.time()
+
+        # Check cache first
+        if guild_id in self.settings_cache:
+            cached_settings, timestamp = self.settings_cache[guild_id]
+            if now - timestamp < SETTINGS_CACHE_DURATION:
+                return cached_settings
+
+        async with self.pool.acquire() as conn:
+            # Attempt to fetch settings
+            settings_record = await conn.fetchrow(
+                "SELECT * FROM public.guild_settings WHERE guild_id = $1", str(guild_id)
+            )
+
+            # If no settings exist, create them with defaults
+            if not settings_record:
+                await conn.execute(
+                    "INSERT INTO public.guild_settings (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING",
+                    str(guild_id),
+                )
+                # Re-fetch to get the newly created default settings
+                settings_record = await conn.fetchrow(
+                    "SELECT * FROM public.guild_settings WHERE guild_id = $1",
+                    str(guild_id),
+                )
+
+        settings_dict = dict(settings_record) if settings_record else {}
+        self.settings_cache[guild_id] = (settings_dict, now)
+
+        return settings_dict
 
     # --- Database Utilities ---
 
@@ -95,6 +134,8 @@ class LevelManager:
     async def on_message(self, message: discord.Message):
         if message.author.bot or not message.guild:
             return
+
+        # Cooldown check
         key = (message.guild.id, message.author.id)
         now = datetime.now()
         if (last_msg := self.message_cooldowns.get(key)) and (
@@ -103,14 +144,20 @@ class LevelManager:
             return
         self.message_cooldowns[key] = now
 
+        # Fetch dynamic settings
+        settings = await self.get_guild_settings(message.guild.id)
+        xp_text = settings.get("xp_per_message", 10)
+        xp_image = settings.get("xp_per_image", 15)
+
         amount = (
-            15
+            xp_image
             if any(
                 att.content_type and att.content_type.startswith("image/")
                 for att in message.attachments
             )
-            else 10
+            else xp_text
         )
+
         user_data = await self.get_user(message.guild.id, message.author.id)
         old_level = user_data.get("level", 0)
         new_level = await self.update_user_xp(
@@ -144,16 +191,20 @@ class LevelManager:
     # --- Core Leveling & Role Logic ---
 
     async def _award_voice_xp(self, member: discord.Member, start_time: datetime):
+        settings = await self.get_guild_settings(member.guild.id)
+        voice_xp_limit = settings.get("voice_xp_limit", 1500)
+        xp_per_minute = settings.get("xp_per_minute_in_voice", 4)
+
         user = await self.get_user(member.guild.id, member.id)
-        if user.get("voice_xp_earned", 0) >= VOICE_XP_LIMIT:
+        if user.get("voice_xp_earned", 0) >= voice_xp_limit:
             return
 
         elapsed_seconds = (datetime.now(IST) - start_time).total_seconds()
-        xp_to_add = int((elapsed_seconds / 60) * 4)  # 4 XP per minute
+        xp_to_add = int((elapsed_seconds / 60) * xp_per_minute)
         if xp_to_add <= 0:
             return
 
-        remaining_room = VOICE_XP_LIMIT - user.get("voice_xp_earned", 0)
+        remaining_room = voice_xp_limit - user.get("voice_xp_earned", 0)
         xp_to_add = min(xp_to_add, remaining_room)
 
         if xp_to_add > 0:
@@ -249,7 +300,6 @@ class LevelManager:
                     ],
                     reason="Level role sync",
                 )
-            # Return True if roles were changed, for the upgrade_all_roles command
             if roles_to_add_ids or roles_to_remove_ids:
                 return target_role_id
         except discord.Forbidden:
@@ -324,26 +374,18 @@ class LevelManager:
         """Remove old cooldown entries to prevent memory leaks."""
         now = datetime.now()
         cutoff = now - timedelta(hours=1)
-    
-        # Remove entries older than 1 hour
+
         old_keys = [
-            key for key, timestamp in self.message_cooldowns.items()
+            key
+            for key, timestamp in self.message_cooldowns.items()
             if timestamp < cutoff
         ]
-    
+
         for key in old_keys:
             del self.message_cooldowns[key]
-    
+
         if old_keys:
             log.info(f"🧹 Cleaned up {len(old_keys)} old cooldown entries")
-
-    # Add to the start() method:
-    async def start(self):
-        self.bot.add_listener(self.on_message, "on_message")
-        self.bot.add_listener(self.on_voice_state_update, "on_voice_state_update")
-        self.reset_loop.start()
-        self.cleanup_cooldowns.start()  # Add this line
-        log.info("Leveling system has been initialized (Award-on-Leave Mode).")
 
     # --- Slash Commands ---
 
@@ -357,6 +399,9 @@ class LevelManager:
         ):
             target = member or interaction.user
             user_data = await self.get_user(interaction.guild.id, target.id)
+            settings = await self.get_guild_settings(interaction.guild.id)
+            voice_xp_limit = settings.get("voice_xp_limit", 1500)
+
             embed = discord.Embed(
                 title=f"📊 Level Info for {target.display_name}", color=0x3498DB
             )
@@ -365,7 +410,7 @@ class LevelManager:
             embed.add_field(name="Total XP", value=user_data.get("xp", 0))
             embed.add_field(
                 name="Voice XP This Period",
-                value=f"{user_data.get('voice_xp_earned', 0)} / {VOICE_XP_LIMIT}",
+                value=f"{user_data.get('voice_xp_earned', 0)} / {voice_xp_limit}",
                 inline=False,
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -444,14 +489,13 @@ class LevelManager:
             description = "Here are the role rewards for reaching specific levels:\n"
             for row in rewards:
                 role = interaction.guild.get_role(int(row["role_id"]))
-                #description += f"\n**Level {row['level']}** → {role.mention if role else f"`{row['role_name']}` (Deleted)"}"
                 level_info = f"\n**Level {row['level']}** → "
                 if role:
                     description += level_info + role.mention
                 else:
-                    role_name = row['role_name']
+                    role_name = row["role_name"]
                     description += level_info + f"`{role_name}` (Deleted)"
-                    
+
             embed = discord.Embed(
                 title="🏅 Level Rewards",
                 description=description,

@@ -1,0 +1,269 @@
+{% extends "base.html" %} {% block title %}Dashboard - Supporter BOT{% endblock
+%} {% block content %} {% if current_user and current_user.is_authenticated %}
+<!-- ==================== SERVER SELECTION PAGE ==================== -->
+<section class="dashboard-section py-5">
+  <div class="container py-5">
+    <div class="text-center mb-5">
+      <h1 class="display-4 fw-bold mb-3">
+        <i class="fas fa-cogs text-primary me-2"></i>
+        Your Servers
+      </h1>
+      <p class="lead text-muted">Select a server to configure Supporter BOT</p>
+    </div>
+
+    {% if servers and servers|length > 0 %}
+    <div class="row g-4">
+      {% for server in servers %}
+      <div class="col-md-6 col-lg-4">
+        <a
+          href="{{ url_for('server_config', guild_id=server.id) }}"
+          class="text-decoration-none"
+        >
+          <div
+            class="server-card p-4 bg-white rounded-4 shadow-sm hover-lift h-100"
+          >
+            <div class="d-flex align-items-center mb-3">
+              {% if server.icon %}
+              <img
+                src="{{ server.icon }}"
+                alt="{{ server.name }}"
+                class="rounded-circle me-3"
+                width="64"
+                height="64"
+              />
+              {% else %}
+              <div
+                class="server-icon-placeholder rounded-circle me-3 bg-primary d-flex align-items-center justify-content-center"
+                style="width: 64px; height: 64px"
+              >
+                <i class="fas fa-server text-white fs-4"></i>
+              </div>
+              {% endif %}
+              <div class="flex-grow-1">
+                <h5 class="mb-1 fw-bold text-dark">{{ server.name }}</h5>
+                <p class="text-muted mb-0 small">
+                  {% if server.is_owner %}
+                  <i class="fas fa-crown text-warning me-1"></i> Owner {% else
+                  %} <i class="fas fa-shield-alt text-info me-1"></i> Admin {%
+                  endif %}
+                </p>
+              </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="badge bg-primary">
+                <i class="fas fa-cog me-1"></i> Configure
+              </span>
+              <small class="text-muted">
+                Last accessed: {{ server.last_accessed.strftime('%b %d, %Y') }}
+              </small>
+            </div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <!-- No Servers Message -->
+    <div class="text-center py-5">
+      <div class="empty-state">
+        <i class="fas fa-inbox text-muted mb-4" style="font-size: 5rem"></i>
+        <h3 class="mb-3">No Servers Found</h3>
+        <p class="text-muted mb-4">
+          You don't have any servers with Supporter BOT yet.<br />
+          Add the bot to your server to get started!
+        </p>
+        <a
+          href="{{ invite_url }}"
+          target="_blank"
+          class="btn btn-primary btn-lg px-5"
+        >
+          <i class="fab fa-discord me-2"></i> Add Bot to Server
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% else %}
+<!-- ==================== LOGIN PAGE ==================== -->
+<section class="dashboard-hero bg-gradient-primary text-white py-5">
+  <div class="container text-center py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <i class="fas fa-cogs mb-4" style="font-size: 5rem"></i>
+        <h1 class="display-3 fw-bold mb-4">Dashboard</h1>
+        <p class="lead mb-5">
+          Manage your Discord servers easily through our intuitive web
+          dashboard. Configure bot settings, set up notifications, and customize
+          your server without using commands!
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="dashboard-features py-5">
+  <div class="container py-5">
+    <!-- Dashboard Features -->
+    <div class="row g-4 mb-5">
+      <div class="col-md-4">
+        <div
+          class="feature-card p-4 bg-white rounded-4 shadow-sm h-100 text-center"
+        >
+          <div
+            class="feature-icon bg-primary bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
+          >
+            <i class="fas fa-trophy text-primary fs-2"></i>
+          </div>
+          <h4 class="fw-bold mb-3">Leveling System</h4>
+          <p class="text-muted">
+            Configure level rewards, set up notification channels, and manage
+            auto-reset schedules with just a few clicks.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div
+          class="feature-card p-4 bg-white rounded-4 shadow-sm h-100 text-center"
+        >
+          <div
+            class="feature-icon bg-danger bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
+          >
+            <i class="fab fa-youtube text-danger fs-2"></i>
+          </div>
+          <h4 class="fw-bold mb-3">YouTube Notifications</h4>
+          <p class="text-muted">
+            Add YouTube channels, set notification channels, and manage role
+            mentions through an easy-to-use interface.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div
+          class="feature-card p-4 bg-white rounded-4 shadow-sm h-100 text-center"
+        >
+          <div
+            class="feature-icon bg-warning bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
+          >
+            <i class="fas fa-shield-alt text-warning fs-2"></i>
+          </div>
+          <h4 class="fw-bold mb-3">Channel Controls</h4>
+          <p class="text-muted">
+            Manage media-only channels, text-only channels, and link
+            restrictions with visual controls.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Benefits -->
+    <div class="row g-4 mb-5">
+      <div class="col-lg-6">
+        <div class="info-card bg-white p-5 rounded-4 shadow-sm">
+          <h3 class="fw-bold mb-4">
+            <i class="fas fa-check-circle text-success me-2"></i>
+            Why Use the Dashboard?
+          </h3>
+          <ul class="list-unstyled">
+            <li class="mb-3">
+              <i class="fas fa-mouse-pointer text-primary me-2"></i>
+              <strong>Easy Configuration:</strong> No need to memorize slash
+              commands
+            </li>
+            <li class="mb-3">
+              <i class="fas fa-sync text-primary me-2"></i>
+              <strong>Real-Time Sync:</strong> Changes reflect instantly in
+              Discord
+            </li>
+            <li class="mb-3">
+              <i class="fas fa-list text-primary me-2"></i>
+              <strong>Visual Overview:</strong> See all your settings at a
+              glance
+            </li>
+            <li class="mb-3">
+              <i class="fas fa-mobile-alt text-primary me-2"></i>
+              <strong>Mobile Friendly:</strong> Manage servers from any device
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="info-card bg-white p-5 rounded-4 shadow-sm">
+          <h3 class="fw-bold mb-4">
+            <i class="fas fa-shield-check text-info me-2"></i>
+            Secure & Private
+          </h3>
+          <ul class="list-unstyled">
+            <li class="mb-3">
+              <i class="fas fa-lock text-primary me-2"></i>
+              <strong>Discord OAuth2:</strong> Secure login through Discord
+            </li>
+            <li class="mb-3">
+              <i class="fas fa-user-shield text-primary me-2"></i>
+              <strong>Permission-Based:</strong> Only access servers where
+              you're admin
+            </li>
+            <li class="mb-3">
+              <i class="fas fa-database text-primary me-2"></i>
+              <strong>Encrypted Storage:</strong> Your data is safely stored
+            </li>
+            <li class="mb-3">
+              <i class="fas fa-history text-primary me-2"></i>
+              <strong>Activity Logs:</strong> Track all configuration changes
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Button -->
+    <div class="text-center">
+      <a
+        href="{{ url_for('dashboard_login') }}"
+        class="btn btn-primary btn-lg px-5 shadow-lg"
+      >
+        <i class="fab fa-discord me-2"></i>
+        Login with Discord
+      </a>
+      <p class="text-muted mt-3 small">
+        By logging in, you agree to our Terms of Service and Privacy Policy
+      </p>
+    </div>
+  </div>
+</section>
+{% endif %} {% endblock %} {% block extra_css %}
+<style>
+  .server-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+  }
+
+  .server-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15) !important;
+    border-color: #5865f2;
+  }
+
+  .server-icon-placeholder {
+    background: linear-gradient(135deg, #5865f2 0%, #7289da 100%);
+  }
+
+  .empty-state {
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .feature-card {
+    transition: all 0.3s ease;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-5px);
+  }
+</style>
+{% endblock %}

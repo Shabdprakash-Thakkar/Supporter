@@ -137,6 +137,16 @@
               </a>
             </li>
 
+            <!-- ✨ NEW: Dashboard Button -->
+            <li class="nav-item">
+              <a
+                class="nav-link {% if request.endpoint in ['dashboard', 'dashboard_servers', 'server_config'] %}active{% endif %}"
+                href="{{ url_for('dashboard') }}"
+              >
+                <i class="fas fa-cogs me-1"></i> Dashboard
+              </a>
+            </li>
+
             <!-- Add to Discord button -->
             <li class="nav-item">
               <a
@@ -147,6 +157,51 @@
                 <i class="fab fa-discord me-1"></i> Add to Discord
               </a>
             </li>
+
+            <!-- ✨ NEW: User Avatar/Logout (if logged in) -->
+            {% if current_user and current_user.is_authenticated %}
+            <li class="nav-item dropdown">
+              <a
+                class="nav-link dropdown-toggle d-flex align-items-center"
+                href="#"
+                id="userDropdown"
+                role="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <img
+                  src="{{ current_user.get_avatar_url() }}"
+                  alt="{{ current_user.username }}"
+                  class="rounded-circle me-2"
+                  width="32"
+                  height="32"
+                />
+                <span>{{ current_user.username }}</span>
+              </a>
+              <ul
+                class="dropdown-menu dropdown-menu-end"
+                aria-labelledby="userDropdown"
+              >
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('dashboard_servers') }}"
+                  >
+                    <i class="fas fa-server me-2"></i> My Servers
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider" /></li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="{{ url_for('dashboard_logout') }}"
+                  >
+                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                  </a>
+                </li>
+              </ul>
+            </li>
+            {% endif %}
 
             <li class="nav-item ms-2">
               <div
@@ -204,6 +259,14 @@
               </li>
               <li class="mb-2">
                 <a
+                  href="{{ url_for('dashboard') }}"
+                  class="text-white-50 text-decoration-none hover-link"
+                >
+                  <i class="fas fa-angle-right me-2"></i>Dashboard
+                </a>
+              </li>
+              <li class="mb-2">
+                <a
                   href="{{ url_for('contact') }}"
                   class="text-white-50 text-decoration-none hover-link"
                 >
@@ -253,57 +316,8 @@
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
-    <script>
-      (function () {
-        "use strict";
-        const THEME_KEY = "supporter-bot-theme";
 
-        function getCurrentTheme() {
-          return localStorage.getItem(THEME_KEY) || "light";
-        }
-
-        function setTheme(theme) {
-          document.documentElement.setAttribute("data-theme", theme);
-          localStorage.setItem(THEME_KEY, theme);
-          const icon = document.querySelector(".theme-toggle-slider i");
-          if (icon) {
-            icon.className = theme === "dark" ? "fas fa-moon" : "fas fa-sun";
-          }
-        }
-
-        function toggleTheme() {
-          const current = getCurrentTheme();
-          const newTheme = current === "light" ? "dark" : "light";
-          setTheme(newTheme);
-          const btn = document.getElementById("themeToggle");
-          if (btn) {
-            btn.style.transform = "scale(0.95)";
-            setTimeout(() => (btn.style.transform = "scale(1)"), 100);
-          }
-        }
-
-        function init() {
-          setTheme(getCurrentTheme());
-          const themeToggle = document.getElementById("themeToggle");
-          if (themeToggle) {
-            themeToggle.addEventListener("click", toggleTheme);
-            console.log("✅ Theme toggle ready!");
-          }
-          document.addEventListener("keydown", function (e) {
-            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "D") {
-              e.preventDefault();
-              toggleTheme();
-            }
-          });
-        }
-
-        if (document.readyState === "loading") {
-          document.addEventListener("DOMContentLoaded", init);
-        } else {
-          init();
-        }
-      })();
-    </script>
+    <!-- The inline script that was causing the conflict has been removed. -->
 
     {% block extra_js %}{% endblock %}
   </body>
