@@ -52,10 +52,13 @@ class LevelManager:
                 "SELECT * FROM public.guild_settings WHERE guild_id = $1", str(guild_id)
             )
 
-            # If no settings exist, create them with defaults
+            # If no settings exist, create them with NEW defaults
             if not settings_record:
                 await conn.execute(
-                    "INSERT INTO public.guild_settings (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING",
+                    """INSERT INTO public.guild_settings 
+                        (guild_id, xp_per_message, xp_per_image, xp_per_minute_in_voice, voice_xp_limit) 
+                        VALUES ($1, 5, 10, 15, 1500) 
+                        ON CONFLICT (guild_id) DO NOTHING""",
                     str(guild_id),
                 )
                 # Re-fetch to get the newly created default settings
@@ -64,9 +67,14 @@ class LevelManager:
                     str(guild_id),
                 )
 
-        settings_dict = dict(settings_record) if settings_record else {}
-        self.settings_cache[guild_id] = (settings_dict, now)
+        settings_dict = dict(settings_record) if settings_record else {
+                "xp_per_message": 5,
+                "xp_per_image": 10,
+                "xp_per_minute_in_voice": 15,
+                "voice_xp_limit": 1500,
+        }    
 
+        self.settings_cache[guild_id] = (settings_dict, now)
         return settings_dict
 
     # --- Database Utilities ---

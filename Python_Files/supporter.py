@@ -40,17 +40,28 @@ intents.voice_states = True
 
 # --- START: NEW RELIABLE FIX ---
 class SupporterCommandTree(discord.app_commands.CommandTree):
-    """A custom CommandTree to reliably count command usage."""
+    """A custom CommandTree to reliably count command usage in the database."""
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        # This function runs for EVERY slash command before its code is executed.
         if interaction.command is not None:
-            # The 'bot' instance is available via the interaction object.
             bot_instance = interaction.client
-            bot_instance.commands_used_session += 1
-            log.info(
-                f"📊 Command used: /{interaction.command.name} by {interaction.user} in {interaction.guild.name} | Session total: {bot_instance.commands_used_session}"
-            )
+            if bot_instance.pool:
+                try:
+                    # Increment command counter in the database directly
+                    await bot_instance.pool.execute(
+                        """
+                        INSERT INTO public.bot_stats (bot_id, commands_used) VALUES ($1, 1)
+                        ON CONFLICT (bot_id) DO UPDATE SET
+                        commands_used = public.bot_stats.commands_used + 1,
+                        last_updated = NOW();
+                        """,
+                        str(bot_instance.user.id),
+                    )
+                    log.info(
+                        f"📊 Command used: /{interaction.command.name} by {interaction.user}. DB counter incremented."
+                    )
+                except Exception as e:
+                    log.error(f"Failed to increment command counter in DB: {e}")
         # Always return True to allow the command to proceed.
         return True
 
@@ -72,9 +83,6 @@ class SupporterBot(commands.Bot):
         )
         # --- END: MODIFIED SECTION ---
         self.pool = None
-        # STATS TRACKING
-        self.commands_used_session = 0
-        self.total_commands_db = 0
 
     async def setup_hook(self):
         """This function is called once the bot is ready, before it connects to Discord."""
@@ -130,34 +138,30 @@ class SupporterBot(commands.Bot):
 
         log.info("All managers have been initialized.")
 
-    @tasks.loop(minutes=2)
-    async def update_stats_task(self):
-        """Periodically updates the bot's stats in the database."""
-        if self.pool is None or not self.is_ready() or self.commands_used_session == 0:
-            if self.is_ready() and self.commands_used_session == 0:
-                log.info("📊 Stats update skipped - no new commands in this session.")
-            return
+    async def update_stats_once(self) -> bool:
+        """
+        Periodically updates server and user counts. Command count is handled incrementally elsewhere.
+        """
+        if self.pool is None or not self.is_ready():
+            return False
 
         server_count = len(self.guilds)
-        user_count = sum(guild.member_count for guild in self.guilds)
-        current_command_total = self.total_commands_db + self.commands_used_session
+        user_count = sum(
+            guild.member_count for guild in self.guilds if guild.member_count
+        )
 
         log.info("=" * 60)
         log.info("📊 STATS UPDATE TRIGGERED")
         log.info(f"   Servers: {server_count}")
         log.info(f"   Users: {user_count}")
-        log.info(f"   Commands (DB): {self.total_commands_db}")
-        log.info(f"   Commands (Session): {self.commands_used_session}")
-        log.info(f"   Commands (Total): {current_command_total}")
         log.info("=" * 60)
 
         query = """
-            INSERT INTO public.bot_stats (bot_id, server_count, user_count, commands_used, last_updated)
-            VALUES ($1, $2, $3, $4, NOW())
+            INSERT INTO public.bot_stats (bot_id, server_count, user_count, last_updated)
+            VALUES ($1, $2, $3, NOW())
             ON CONFLICT (bot_id) DO UPDATE SET
                 server_count = $2,
                 user_count = $3,
-                commands_used = $4,
                 last_updated = NOW();
         """
         try:
@@ -166,31 +170,30 @@ class SupporterBot(commands.Bot):
                 str(self.user.id),
                 server_count,
                 user_count,
-                current_command_total,
             )
-            log.info("✅ Stats successfully written to database")
-
-            self.total_commands_db = current_command_total
-            self.commands_used_session = 0
-            log.info(
-                f"   In-memory stats synced: total_commands_db={self.total_commands_db}, commands_used_session={self.commands_used_session}"
-            )
+            log.info("✅ Server/User stats successfully written to database")
 
             verify = await self.pool.fetchrow(
                 "SELECT * FROM public.bot_stats WHERE bot_id = $1", str(self.user.id)
             )
             if verify:
                 log.info(
-                    f"✅ Verification: DB now shows {verify['commands_used']} commands"
+                    f"✅ Verification: DB now shows {verify['server_count']} servers, "
+                    f"{verify['user_count']} users, {verify['commands_used']} total commands"
                 )
             else:
                 log.error("❌ Verification failed: No row found in database!")
 
+            return True
+
         except Exception as e:
             log.error(f"❌ Failed to update bot stats in DB: {e}", exc_info=True)
-            log.error(
-                f"   Query attempted with values: bot_id={self.user.id}, servers={server_count}, users={user_count}, commands={current_command_total}"
-            )
+            return False
+
+    @tasks.loop(minutes=2)
+    async def update_stats_task(self):
+        """Periodically updates the bot's stats in the database."""
+        await self.update_stats_once()
 
     @update_stats_task.before_loop
     async def before_update_stats_task(self):
@@ -217,35 +220,25 @@ async def on_ready():
 
     if bot.pool:
         try:
-            bot.total_commands_db = (
-                await bot.pool.fetchval(
-                    "SELECT commands_used FROM public.bot_stats WHERE bot_id = $1",
-                    str(bot.user.id),
-                )
-                or 0
+            # Ensure the bot_stats row exists for this bot.
+            await bot.pool.execute(
+                """
+                INSERT INTO public.bot_stats (bot_id, server_count, user_count, commands_used, last_updated)
+                VALUES ($1, $2, $3, 0, NOW())
+                ON CONFLICT (bot_id) DO NOTHING
+                """,
+                str(bot.user.id),
+                len(bot.guilds),
+                sum(
+                    g.member_count for g in bot.guilds if g.member_count
+                ),  # Safe member count
             )
-            log.info(
-                f"📊 Loaded initial command count from DB: {bot.total_commands_db}"
-            )
+            log.info("✅ Verified bot_stats table entry.")
         except Exception as e:
-            log.warning(f"⚠️ Could not load command count (table might be empty): {e}")
-            bot.total_commands_db = 0
+            log.error(f"⚠️ Error initializing/verifying bot_stats: {e}")
 
-            try:
-                await bot.pool.execute(
-                    """
-                    INSERT INTO public.bot_stats (bot_id, server_count, user_count, commands_used, last_updated)
-                    VALUES ($1, $2, $3, $4, NOW())
-                    ON CONFLICT (bot_id) DO NOTHING
-                    """,
-                    str(bot.user.id),
-                    len(bot.guilds),
-                    sum(guild.member_count for guild in bot.guilds),
-                    0,
-                )
-                log.info("✅ Initialized bot_stats table with default values")
-            except Exception as init_error:
-                log.error(f"❌ Failed to initialize bot_stats: {init_error}")
+    # Sync all guilds to database on startup to ensure dashboard has them
+    await sync_all_guilds_to_database()
 
     try:
         synced = await bot.tree.sync()
@@ -262,7 +255,10 @@ async def on_ready():
 
 @bot.event
 async def on_guild_join(guild: discord.Guild):
+    """Track when bot joins a guild."""
     log.info(f"🔥 Joined a new server: {guild.name} (ID: {guild.id})")
+
+    # Check if guild is banned
     if await bot.owner_manager.is_guild_banned(guild.id):
         log.warning(f"🚫 Bot joined banned server {guild.name}. Leaving immediately.")
         try:
@@ -274,15 +270,104 @@ async def on_guild_join(guild: discord.Guild):
             log.warning("Could not notify server owner about the ban.")
         finally:
             await guild.leave()
+            return
+
+    # Add the server to guild_settings to mark it as active
+    try:
+        async with bot.pool.acquire() as conn:
+            await conn.execute(
+                """INSERT INTO public.guild_settings (guild_id) 
+                   VALUES ($1) 
+                   ON CONFLICT (guild_id) DO NOTHING""",
+                str(guild.id),
+            )
+        log.info(f"✅ Registered guild {guild.name} in database")
+    except Exception as e:
+        log.error(f"Error registering guild in database: {e}")
+
+
+@bot.event
+async def on_guild_remove(guild: discord.Guild):
+    """Track when bot leaves a guild and mark it as inactive."""
+    log.info(f"👋 Left server: {guild.name} (ID: {guild.id})")
+
+    # FIX: Remove the guild from the primary settings table.
+    # This marks it as "inactive" for the dashboard and stats without deleting user data.
+    try:
+        async with bot.pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM public.guild_settings WHERE guild_id = $1",
+                str(guild.id),
+            )
+        log.info(f"🗑️ De-registered guild {guild.name} from active list.")
+    except Exception as e:
+        log.error(f"Error de-registering guild from database: {e}")
+
+
+async def sync_all_guilds_to_database():
+    """
+    On startup, ensure the database's active server list matches the bot's current guilds.
+    1. Adds any new guilds.
+    2. Removes any guilds the bot was kicked from while offline.
+    """
+    if not bot.pool:
+        log.error("Cannot sync guilds: Database pool not initialized")
+        return
+
+    log.info(f"🔄 Syncing {len(bot.guilds)} guilds to database...")
+
+    # Get the "source of truth" list of guild IDs from the bot
+    current_guild_ids = {str(g.id) for g in bot.guilds}
+
+    async with bot.pool.acquire() as conn:
+        # Get the list of guilds currently marked as active in the DB
+        db_guild_ids = {
+            row["guild_id"]
+            for row in await conn.fetch("SELECT guild_id FROM public.guild_settings")
+        }
+
+        # Find which guilds to add and which to remove
+        guilds_to_add = current_guild_ids - db_guild_ids
+        guilds_to_remove = db_guild_ids - current_guild_ids
+
+        # Add new guilds
+        if guilds_to_add:
+            log.info(f"Found {len(guilds_to_add)} new guilds to register.")
+            await conn.executemany(
+                "INSERT INTO public.guild_settings (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING",
+                [(gid,) for gid in guilds_to_add],
+            )
+
+        # Remove old/kicked guilds
+        if guilds_to_remove:
+            log.warning(
+                f"Found {len(guilds_to_remove)} guilds to de-register (bot was removed)."
+            )
+            await conn.execute(
+                "DELETE FROM public.guild_settings WHERE guild_id = ANY($1::TEXT[])",
+                list(guilds_to_remove),
+            )
+
+    log.info("✅ Guild sync complete.")
 
 
 @bot.tree.command(name="ping", description="Check if the bot is responsive.")
 async def ping(interaction: discord.Interaction):
     latency = round(bot.latency * 1000)
 
-    server_count = len(bot.guilds)
-    user_count = sum(guild.member_count for guild in bot.guilds)
-    current_command_total = bot.total_commands_db + bot.commands_used_session
+    # Get stats directly from database
+    stats = await bot.pool.fetchrow(
+        "SELECT * FROM public.bot_stats WHERE bot_id = $1", str(bot.user.id)
+    )
+
+    if stats:
+        server_count = stats["server_count"]
+        user_count = stats["user_count"]
+        commands_used = stats["commands_used"]
+    else:
+        server_count = len(bot.guilds)
+        user_count = sum(guild.member_count for guild in bot.guilds)
+        commands_used = 0
 
     embed = discord.Embed(
         title="🏓 Pong!",
@@ -293,12 +378,7 @@ async def ping(interaction: discord.Interaction):
     embed.add_field(name="Servers", value=f"{server_count}")
     embed.add_field(name="Total Users", value=f"{user_count}")
     embed.add_field(
-        name="Commands Used (Session)",
-        value=f"{bot.commands_used_session}",
-        inline=False,
-    )
-    embed.add_field(
-        name="Commands Used (Total)", value=f"{current_command_total}", inline=False
+        name="Commands Used (Total)", value=f"{commands_used}", inline=False
     )
     embed.set_footer(text="Stats update every 2 minutes")
 
@@ -318,7 +398,13 @@ async def force_stats_update(interaction: discord.Interaction):
 
     await interaction.response.defer(ephemeral=True)
 
-    await bot.update_stats_task.coro(bot.update_stats_task.__self__)
+    updated = await bot.update_stats_once()
+    if not updated:
+        await interaction.followup.send(
+            "⚠️ Could not update stats. Ensure the bot is ready and the database is reachable.",
+            ephemeral=True,
+        )
+        return
 
     updated_stats = await bot.pool.fetchrow(
         "SELECT * FROM public.bot_stats WHERE bot_id = $1", str(bot.user.id)
@@ -332,7 +418,6 @@ async def force_stats_update(interaction: discord.Interaction):
         embed.add_field(name="Servers", value=str(updated_stats["server_count"]))
         embed.add_field(name="Users", value=str(updated_stats["user_count"]))
         embed.add_field(name="Commands Used", value=str(updated_stats["commands_used"]))
-        embed.add_field(name="Session Commands", value="0 (just reset)", inline=False)
         embed.set_footer(text="Database updated successfully!")
         await interaction.followup.send(embed=embed, ephemeral=True)
         log.info(f"🔄 Stats manually updated by {interaction.user}")
@@ -439,7 +524,8 @@ async def show_config(interaction: discord.Interaction):
 async def on_app_command_error(
     interaction: discord.Interaction, error: discord.app_commands.AppCommandError
 ):
-    log.error(f"Slash command error for '/{interaction.command.name}': {error}")
+    command_name = interaction.command.name if interaction.command else "unknown"
+    log.error(f"Slash command error for '/{command_name}': {error}")
     message = "❌ An unexpected error occurred. Please try again later."
     if isinstance(error, discord.app_commands.MissingPermissions):
         message = "🚫 You do not have the required permissions to run this command."

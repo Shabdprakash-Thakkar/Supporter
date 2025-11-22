@@ -13,11 +13,7 @@ block content %}
           engagement, and automation. Level up your community experience today!
         </p>
         <div class="d-flex flex-wrap gap-3">
-          <a
-            href="{{ invite_url }}"
-            class="btn btn-light btn-lg px-4 shadow-lg"
-            target="_blank"
-          >
+          <a href="{{ invite_url }}" class="btn btn-light btn-lg px-4 shadow-lg" target="_blank">
             <i class="fab fa-discord me-2"></i>Add to Discord
           </a>
           <a href="#features" class="btn btn-outline-light btn-lg px-4">
@@ -27,12 +23,9 @@ block content %}
       </div>
       <div class="col-lg-6" data-aos="fade-left">
         <div class="hero-image-container">
-          <img
-            src="{{ url_for('static', filename='images/bot-logo.png') }}"
-            alt="Supporter BOT"
+          <img src="{{ url_for('static', filename='images/bot-logo.png') }}" alt="Supporter BOT"
             class="img-fluid rounded-4 shadow-2xl animate-float"
-            onerror=" this.src='https://via.placeholder.com/600x400/5865F2/ffffff?text=Supporter+BOT+by+Shabdprakash' "
-          />
+            onerror=" this.src='https://via.placeholder.com/600x400/5865F2/ffffff?text=Supporter+BOT+by+Shabdprakash' " />
         </div>
       </div>
     </div>
@@ -46,21 +39,21 @@ block content %}
       <div class="col-md-3 col-sm-6" data-aos="zoom-in" data-aos-delay="100">
         <div class="stat-card p-4 bg-white rounded-4 shadow-sm h-100">
           <i class="fas fa-server text-primary fs-1 mb-3"></i>
-          <h3 class="fw-bold mb-2" id="stat-servers">3+</h3>
+          <h3 class="fw-bold mb-2" id="stat-servers"><span class="spinner-border spinner-border-sm"></span></h3>
           <p class="text-muted mb-0">Active Servers</p>
         </div>
       </div>
       <div class="col-md-3 col-sm-6" data-aos="zoom-in" data-aos-delay="200">
         <div class="stat-card p-4 bg-white rounded-4 shadow-sm h-100">
           <i class="fas fa-users text-success fs-1 mb-3"></i>
-          <h3 class="fw-bold mb-2" id="stat-users">1000+</h3>
+          <h3 class="fw-bold mb-2" id="stat-users"><span class="spinner-border spinner-border-sm"></span></h3>
           <p class="text-muted mb-0">Happy Users</p>
         </div>
       </div>
       <div class="col-md-3 col-sm-6" data-aos="zoom-in" data-aos-delay="300">
         <div class="stat-card p-4 bg-white rounded-4 shadow-sm h-100">
           <i class="fas fa-terminal text-warning fs-1 mb-3"></i>
-          <h3 class="fw-bold mb-2" id="stat-commands">780+</h3>
+          <h3 class="fw-bold mb-2" id="stat-commands"><span class="spinner-border spinner-border-sm"></span></h3>
           <p class="text-muted mb-0">Commands Used</p>
         </div>
       </div>
@@ -72,7 +65,12 @@ block content %}
         </div>
       </div>
     </div>
-  </div>
+    <!-- Last Updated Indicator -->
+    <div class="text-center mt-3">
+      <small class="text-muted" id="stats-last-updated">
+        <i class="fas fa-sync-alt me-1"></i>Loading stats...
+      </small>
+    </div>
 </section>
 
 <!-- Features Section -->
@@ -90,12 +88,8 @@ block content %}
     <div class="row g-4">
       <!-- Feature 1: Leveling System -->
       <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
-        <div
-          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
-        >
-          <div
-            class="feature-icon bg-primary bg-opacity-10 rounded-circle p-3 mb-3"
-          >
+        <div class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift">
+          <div class="feature-icon bg-primary bg-opacity-10 rounded-circle p-3 mb-3">
             <i class="fas fa-trophy text-primary fs-2"></i>
           </div>
           <h4 class="fw-bold mb-3">Advanced Leveling System</h4>
@@ -123,12 +117,8 @@ block content %}
 
       <!-- Feature 2: YouTube Notifications -->
       <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
-        <div
-          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
-        >
-          <div
-            class="feature-icon bg-danger bg-opacity-10 rounded-circle p-3 mb-3"
-          >
+        <div class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift">
+          <div class="feature-icon bg-danger bg-opacity-10 rounded-circle p-3 mb-3">
             <i class="fab fa-youtube text-danger fs-2"></i>
           </div>
           <h4 class="fw-bold mb-3">YouTube Notifications</h4>
@@ -156,12 +146,8 @@ block content %}
 
       <!-- Feature 3: Channel Management -->
       <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
-        <div
-          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
-        >
-          <div
-            class="feature-icon bg-warning bg-opacity-10 rounded-circle p-3 mb-3"
-          >
+        <div class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift">
+          <div class="feature-icon bg-warning bg-opacity-10 rounded-circle p-3 mb-3">
             <i class="fas fa-shield-alt text-warning fs-2"></i>
           </div>
           <h4 class="fw-bold mb-3">Advanced Channel Control</h4>
@@ -189,12 +175,8 @@ block content %}
 
       <!-- Feature 4: Time Channels -->
       <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
-        <div
-          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
-        >
-          <div
-            class="feature-icon bg-info bg-opacity-10 rounded-circle p-3 mb-3"
-          >
+        <div class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift">
+          <div class="feature-icon bg-info bg-opacity-10 rounded-circle p-3 mb-3">
             <i class="fas fa-clock text-info fs-2"></i>
           </div>
           <h4 class="fw-bold mb-3">Live Time Channels</h4>
@@ -221,12 +203,8 @@ block content %}
 
       <!-- Feature 5: Easy Configuration -->
       <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="500">
-        <div
-          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
-        >
-          <div
-            class="feature-icon bg-success bg-opacity-10 rounded-circle p-3 mb-3"
-          >
+        <div class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift">
+          <div class="feature-icon bg-success bg-opacity-10 rounded-circle p-3 mb-3">
             <i class="fas fa-cog text-success fs-2"></i>
           </div>
           <h4 class="fw-bold mb-3">Easy Configuration</h4>
@@ -256,12 +234,8 @@ block content %}
 
       <!-- Feature 6: Owner Controls -->
       <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="600">
-        <div
-          class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift"
-        >
-          <div
-            class="feature-icon bg-dark bg-opacity-10 rounded-circle p-3 mb-3"
-          >
+        <div class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift">
+          <div class="feature-icon bg-dark bg-opacity-10 rounded-circle p-3 mb-3">
             <i class="fas fa-crown text-dark fs-2"></i>
           </div>
           <h4 class="fw-bold mb-3">Owner Controls</h4>
@@ -297,11 +271,25 @@ block content %}
         <i class="fas fa-terminal text-primary me-2"></i>Command Categories
       </h2>
       <p class="lead text-muted">
-        Over 33 powerful commands organized by category
+        Over <strong id="total-command-count">
+          <span class="spinner-border spinner-border-sm"></span>
+        </strong> powerful commands organized by category
       </p>
     </div>
-
-    <div class="row g-4">
+    <!-- SINGLE Container for Dynamic Commands -->
+    <div class="row g-4" id="command-categories-container">
+      <!-- Loading spinner -->
+      <div class="col-12 text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading commands...</span>
+        </div>
+        <p class="text-muted mt-3">Loading command categories...</p>
+      </div>
+    </div>
+  </div>
+</section>
+<!--
+    <div class="row g-4" id="command-categories-container">
       <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="100">
         <div class="command-category bg-white p-4 rounded-4 shadow-sm h-100">
           <h5 class="fw-bold text-primary mb-3">
@@ -377,6 +365,7 @@ block content %}
     </div>
   </div>
 </section>
+-->
 
 <!-- CTA Section -->
 <section class="cta-section bg-gradient-primary text-white py-5">
@@ -385,40 +374,362 @@ block content %}
     <p class="lead mb-4">
       Join thousands of communities already using Supporter BOT
     </p>
-    <a
-      href="{{ invite_url }}"
-      class="btn btn-light btn-lg px-5 shadow-lg"
-      target="_blank"
-    >
+    <a href="{{ invite_url }}" class="btn btn-light btn-lg px-5 shadow-lg" target="_blank">
       <i class="fab fa-discord me-2"></i>Add to Discord Now
     </a>
   </div>
 </section>
-{% endblock %} {% block extra_js %}
+{% endblock %}
+{% block extra_js %}
 <script>
-  // Smooth scrolling for anchor links
-  document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-    anchor.addEventListener("click", function (e) {
-      e.preventDefault();
-      const target = document.querySelector(this.getAttribute("href"));
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
+  //  FIXED Stats Update System
+
+    let statsUpdateInterval;
+    let lastStatsData = null;
+
+    // Animate number from current to target value
+    function animateValue(element, start, end, duration = 1000) {
+      if (!element) return;
+
+      const startTime = performance.now();
+      const isFloat = end.toString().includes('.');
+      const startNum = parseFloat(start) || 0;
+      const endNum = parseFloat(end);
+
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Easing function for smooth animation
+        const easeOutQuad = progress * (2 - progress);
+        const current = startNum + (endNum - startNum) * easeOutQuad;
+
+        if (isFloat) {
+          element.textContent = current.toFixed(1);
+        } else {
+          element.textContent = Math.floor(current).toLocaleString();
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    // Update a single stat with animation
+    function updateStat(elementId, newValue, suffix = "") {
+      const element = document.getElementById(elementId);
+      if (!element) {
+        console.warn(`Element ${elementId} not found`);
+        return;
+      }
+
+      // Get current value (remove commas and suffixes)
+      const currentText = element.textContent.replace(/,/g, '').replace(suffix, '').trim();
+      const currentValue = parseFloat(currentText) || 0;
+
+      // Only animate if value changed
+      if (currentValue !== newValue) {
+        animateValue(element, currentValue, newValue, 800);
+
+        // Add visual feedback
+        element.parentElement?.classList.add('stat-updated');
+        setTimeout(() => {
+          element.parentElement?.classList.remove('stat-updated');
+        }, 800);
+      } else {
+        // Just update text without animation
+        element.textContent = newValue.toLocaleString() + suffix;
+      }
+    }
+
+    // Main stats update function
+    async function updateStats() {
+      try {
+        const response = await fetch("/api/stats");
+        const data = await response.json();
+
+        if (data.error) {
+          console.error("Stats error:", data.error);
+          setStatsError();
+          return;
+        }
+
+        console.log("✅ Stats updated:", data);
+
+        // Update each stat with animation
+        updateStat("stat-servers", data.total_servers);
+        updateStat("stat-users", data.total_users);
+        updateStat("stat-commands", data.commands_used);
+        updateStat("stat-uptime", data.uptime, "%");
+
+        // Update total command count if it exists
+        const totalCommandEl = document.getElementById("total-command-count");
+        if (totalCommandEl) {
+          updateStat("total-command-count", data.total_commands);
+        }
+
+        // Update contact page stats if they exist
+        if (document.getElementById("contact-stat-servers")) {
+          updateStat("contact-stat-servers", data.total_servers);
+          updateStat("contact-stat-users", data.total_users);
+          updateStat("contact-stat-commands", data.commands_used);
+          updateStat("contact-stat-total-commands", data.total_commands);
+
+          const uptimeEl = document.getElementById("contact-stat-uptime");
+          if (uptimeEl) uptimeEl.textContent = data.uptime;
+        }
+
+        // Update timestamp
+        const lastUpdated = new Date(data.last_updated);
+        const formattedTime = lastUpdated.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+
+        const updatedEls = [
+          document.getElementById("stats-last-updated"),
+          document.getElementById("contact-stats-last-updated")
+        ];
+
+        updatedEls.forEach(el => {
+          if (el) {
+            el.innerHTML = `<i class="fas fa-sync-alt me-1"></i>Last updated: ${formattedTime}`;
+            el.classList.remove('text-danger');
+            el.classList.add('text-success');
+
+            // Pulse animation on update
+            el.style.animation = 'pulse 0.5s ease-in-out';
+            setTimeout(() => {
+              el.style.animation = '';
+            }, 500);
+          }
+        });
+
+        lastStatsData = data;
+
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+        setStatsError();
+      }
+    }
+
+    // Set error state for stats
+    function setStatsError() {
+      const errorElements = [
+        "stat-servers",
+        "stat-users",
+        "stat-commands",
+        "contact-stat-servers",
+        "contact-stat-users",
+        "contact-stat-commands",
+        "contact-stat-total-commands"
+      ];
+
+      errorElements.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "N/A";
+      });
+
+      const updatedEls = [
+        document.getElementById("stats-last-updated"),
+        document.getElementById("contact-stats-last-updated")
+      ];
+
+      updatedEls.forEach(el => {
+        if (el) {
+          el.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>Failed to load stats`;
+          el.classList.remove('text-success');
+          el.classList.add('text-danger');
+        }
+      });
+    }
+
+    // Initialize stats system
+    function initStats() {
+      console.log("🚀 Initializing stats system...");
+
+      // Initial load
+      updateStats();
+
+      // Update every 2 minutes (120000 ms)
+      if (statsUpdateInterval) {
+        clearInterval(statsUpdateInterval);
+      }
+      statsUpdateInterval = setInterval(updateStats, 120000);
+
+      console.log("✅ Stats will update every 2 minutes");
+    }
+
+    // Initialize on page load
+    document.addEventListener("DOMContentLoaded", function () {
+      initStats();
+
+      // Also update command categories if on index page
+      if (document.getElementById("command-categories-container")) {
+        updateCommandCategories();
       }
     });
-  });
 
-  // Fetch and update stats
-  fetch("/api/stats")
-    .then((response) => response.json())
-    .then((data) => {
-      document.getElementById("stat-servers").textContent =
-        data.total_servers + "+";
-      document.getElementById("stat-users").textContent =
-        data.total_users.toLocaleString() + "+";
-      document.getElementById("stat-commands").textContent =
-        data.commands_used.toLocaleString() + "+";
-      document.getElementById("stat-uptime").textContent = data.uptime;
-    })
-    .catch((error) => console.error("Error fetching stats:", error));
+    // Cleanup on page unload
+    window.addEventListener("beforeunload", function () {
+      if (statsUpdateInterval) {
+        clearInterval(statsUpdateInterval);
+      }
+    });
+
+    // ✨ Command categories function (from your existing code)
+    async function updateCommandCategories() {
+      try {
+        const response = await fetch("/api/command-categories");
+        const data = await response.json();
+
+        const container = document.getElementById("command-categories-container");
+        container.innerHTML = "";
+
+        const categories = data.categories;
+        const categoryOrder = ["general", "leveling", "youtube", "restrictions", "time"];
+
+        categoryOrder.forEach((key, index) => {
+          const cat = categories[key];
+          const delay = (index + 1) * 100;
+
+          const col = document.createElement("div");
+          col.className = "col-md-6 col-lg-4";
+          col.setAttribute("data-aos", "fade-up");
+          col.setAttribute("data-aos-delay", delay);
+
+          col.innerHTML = `
+        <div class="command-category bg-white p-4 rounded-4 shadow-sm h-100">
+          <div class="d-flex align-items-center mb-3">
+            <i class="${cat.icon} fs-3 text-${cat.color} me-3"></i>
+            <div>
+              <h5 class="fw-bold mb-0 text-${cat.color}">${cat.name}</h5>
+              <small class="text-muted">${cat.commands.length} command${cat.commands.length !== 1 ? 's' : ''}</small>
+            </div>
+          </div>
+          <div class="command-list">
+            ${cat.commands.slice(0, 3).map(cmd => `
+              <div class="mb-2">
+                <code class="d-inline-block px-2 py-1 bg-light rounded">/${cmd}</code>
+              </div>
+            `).join("")}
+            ${cat.commands.length > 3 ? `
+              <p class="text-muted mb-0 mt-3 small">
+                <i class="fas fa-plus-circle me-1"></i>${cat.commands.length - 3} more command${cat.commands.length - 3 !== 1 ? 's' : ''}
+              </p>
+            ` : ""}
+          </div>
+        </div>
+      `;
+
+          container.appendChild(col);
+        });
+
+      } catch (error) {
+        console.error("Error fetching command categories:", error);
+        document.getElementById("command-categories-container").innerHTML =
+          '<div class="col-12 text-center text-danger">Failed to load commands</div>';
+      }
+    };
 </script>
+{% endblock %}
+
+{% block extra_css %}
+<!-- Add this to index.html and contact.html -->
+
+<style>
+  /* Stats Update Animations */
+  @keyframes pulse {
+
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    50% {
+      transform: scale(1.05);
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes glow {
+
+    0%,
+    100% {
+      box-shadow: 0 0 5px rgba(88, 101, 242, 0.3);
+    }
+
+    50% {
+      box-shadow: 0 0 20px rgba(88, 101, 242, 0.6);
+    }
+  }
+
+  .stat-card {
+    transition: all 0.3s ease;
+  }
+
+  .stat-card.stat-updated {
+    animation: glow 0.8s ease-in-out;
+  }
+
+  .stat-card h3 {
+    transition: transform 0.3s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-5px);
+  }
+
+  /* Pulse animation for update indicator */
+  #stats-last-updated,
+  #contact-stats-last-updated {
+    transition: all 0.3s ease;
+  }
+
+  /* Loading spinner styling */
+  .spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+  }
+
+  /* Success/Error colors for timestamp */
+  .text-success {
+    color: #28a745 !important;
+  }
+
+  .text-danger {
+    color: #dc3545 !important;
+  }
+
+  /* Command category hover effects */
+  .command-category {
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    min-height: 280px;
+  }
+
+  .command-category:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .command-list code {
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+  }
+
+  .command-list code:hover {
+    background-color: var(--bs-primary) !important;
+    color: white;
+    transform: translateX(5px);
+  }
+</style>
 {% endblock %}

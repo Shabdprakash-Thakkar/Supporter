@@ -12,22 +12,38 @@ log = logging.getLogger(__name__)
 
 
 class NoTextManager:
+    """
+    Manages granular channel content restrictions using bitwise flags.
+    Supports complex combinations like "allow text + links, block Discord invites + images"
+    """
+    
+    # Content type flags (bitwise)
+    CONTENT_TYPES = {
+        'PLAIN_TEXT': 1,           # 0b00000001
+        'DISCORD_INVITES': 2,      # 0b00000010
+        'IMAGE_LINKS': 4,          # 0b00000100
+        'REGULAR_LINKS': 8,        # 0b00001000
+        'IMAGE_ATTACHMENTS': 16,   # 0b00010000
+        'FILE_ATTACHMENTS': 32,    # 0b00100000
+        'EMBEDS': 64,              # 0b01000000
+    }
+    
     def __init__(self, bot: commands.Bot, pool: asyncpg.Pool):
         self.bot = bot
         self.pool = pool
-        # Regex to find any URL
+        
+        # Regex patterns for content detection
         self.url_pattern = re.compile(
             r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
         )
-        # Regex to specifically find Discord invite links
         self.discord_link_pattern = re.compile(
             r"(?:https?://)?(?:www\.)?discord(?:app\.com/invite|\.gg)/[a-zA-Z0-9]+"
         )
-        # Regex to detect image URLs (jpg/png/gif/webp)
         self.image_url_pattern = re.compile(
             r"https?://\S+\.(?:png|jpe?g|gif|webp)(?:\?\S*)?$", re.IGNORECASE
         )
-        log.info("No-Text system has been initialized.")
+        
+        log.info("✅ No-Text system initialized with granular content filtering")
 
     async def start(self):
         """Starts the manager by adding its event listener."""
@@ -53,8 +69,69 @@ class NoTextManager:
 
         return not bypass_role_ids.isdisjoint(member_role_ids)
 
+    def detect_content_types(self, message: discord.Message) -> int:
+        """
+        Detect all content types present in a message and return as bitwise flags.
+        
+        Returns:
+            int: Bitwise OR of all detected content type flags
+        """
+        detected = 0
+        
+        # 1. Check for plain text (non-empty content without URLs)
+        if message.content.strip():
+            # Has text if there's content beyond just URLs
+            content_without_urls = self.url_pattern.sub('', message.content).strip()
+            if content_without_urls:
+                detected |= self.CONTENT_TYPES['PLAIN_TEXT']
+        
+        # 2. Check for Discord invites
+        if self.discord_link_pattern.search(message.content):
+            detected |= self.CONTENT_TYPES['DISCORD_INVITES']
+        
+        # 3. Check for image links
+        if self.image_url_pattern.search(message.content):
+            detected |= self.CONTENT_TYPES['IMAGE_LINKS']
+        
+        # 4. Check for regular links (excluding Discord invites and image links)
+        all_urls = self.url_pattern.findall(message.content)
+        for url in all_urls:
+            # Skip if it's a Discord invite or image link
+            if not self.discord_link_pattern.match(url) and not self.image_url_pattern.match(url):
+                detected |= self.CONTENT_TYPES['REGULAR_LINKS']
+                break
+        
+        # 5. Check for image attachments
+        for attachment in message.attachments:
+            if attachment.content_type and attachment.content_type.startswith('image/'):
+                detected |= self.CONTENT_TYPES['IMAGE_ATTACHMENTS']
+                break
+        
+        # 6. Check for file attachments (non-images)
+        for attachment in message.attachments:
+            if not attachment.content_type or not attachment.content_type.startswith('image/'):
+                detected |= self.CONTENT_TYPES['FILE_ATTACHMENTS']
+                break
+        
+        # 7. Check for embeds
+        if message.embeds:
+            detected |= self.CONTENT_TYPES['EMBEDS']
+        
+        return detected
+    
+    def get_content_type_names(self, flags: int) -> list:
+        """Convert bitwise flags to human-readable content type names."""
+        names = []
+        for name, value in self.CONTENT_TYPES.items():
+            if flags & value:
+                names.append(name.lower().replace('_', ' '))
+        return names
+    
     async def on_message(self, message: discord.Message):
-        """The core message handler that enforces all channel restrictions."""
+        """
+        Core message handler that enforces granular channel restrictions.
+        Supports both legacy restriction_type and new bitwise allowed/blocked flags.
+        """
         if (
             message.author.bot
             or not message.guild
@@ -66,94 +143,94 @@ class NoTextManager:
         channel_id = str(message.channel.id)
 
         async with self.pool.acquire() as conn:
-            is_no_links = await conn.fetchval(
-                "SELECT 1 FROM public.no_links_channels WHERE guild_id = $1 AND channel_id = $2",
+            # Fetch restriction configuration (both old and new columns)
+            config = await conn.fetchrow(
+                """SELECT restriction_type, redirect_channel_id, 
+                          allowed_content_types, blocked_content_types 
+                   FROM public.channel_restrictions_v2 
+                   WHERE guild_id = $1 AND channel_id = $2""",
                 guild_id,
                 channel_id,
             )
-            is_no_discord_links = await conn.fetchval(
-                "SELECT 1 FROM public.no_discord_links_channels WHERE guild_id = $1 AND channel_id = $2",
-                guild_id,
-                channel_id,
-            )
-            no_text_config = await conn.fetchrow(
-                "SELECT redirect_channel_id FROM public.no_text_channels WHERE guild_id = $1 AND channel_id = $2",
-                guild_id,
-                channel_id,
-            )
-            # New: fetch text-only config (disallow attachments/embeds/image links)
-            text_only_config = await conn.fetchrow(
-                "SELECT redirect_channel_id FROM public.text_only_channels WHERE guild_id = $1 AND channel_id = $2",
-                guild_id,
-                channel_id,
-            )
+
+        # If no configuration exists for this channel, do nothing
+        if not config:
+            return
+
+        allowed_flags = config["allowed_content_types"] or 0
+        blocked_flags = config["blocked_content_types"] or 0
+        redirect_channel_id = config["redirect_channel_id"]
 
         try:
-            # 1. Check for "No Links" (most restrictive)
-            if is_no_links and self.url_pattern.search(message.content):
-                await message.delete()
+            # Detect what content types are in this message
+            detected_content = self.detect_content_types(message)
+            
+            # If nothing detected (empty message), allow it
+            if detected_content == 0:
                 return
-
-            # 2. Check for "No Discord Links"
-            if is_no_discord_links and self.discord_link_pattern.search(
-                message.content
-            ):
+            
+            # Check if any detected content is explicitly blocked
+            if detected_content & blocked_flags:
+                blocked_types = self.get_content_type_names(detected_content & blocked_flags)
+                log.debug(f"Message blocked in {message.channel.name}: contains blocked content: {', '.join(blocked_types)}")
                 await message.delete()
+                
+                # Send redirect message if configured
+                if redirect_channel_id:
+                    redirect_channel = self.bot.get_channel(int(redirect_channel_id))
+                    if redirect_channel:
+                        warn_msg = await message.channel.send(
+                            f"🚫 {message.author.mention}, this channel doesn't allow **{', '.join(blocked_types)}**. "
+                            f"Please use {redirect_channel.mention} instead."
+                        )
+                        await asyncio.sleep(15)
+                        try:
+                            await warn_msg.delete()
+                        except:
+                            pass
                 return
-
-            # 3. Check for "Media-Only" (No Text)
-            is_media = (
-                message.attachments
-                or self.url_pattern.search(message.content)
-                or message.embeds
-            )
-            if no_text_config and not is_media:
-                await message.delete()
-                redirect_channel = self.bot.get_channel(
-                    int(no_text_config["redirect_channel_id"])
-                )
-                if redirect_channel:
-                    warn_msg = await message.channel.send(
-                        f"🚫 {message.author.mention}, please use {redirect_channel.mention} for text. This channel is for media only."
-                    )
-                    await asyncio.sleep(15)
-                    await warn_msg.delete()
-                return
-
-            # 4. NEW: Check for "Text-Only" (No Attachments/Embeds/Image Links)
-            has_restricted_content = (
-                message.attachments  # Has file attachments
-                or message.embeds  # Has embeds
-                or self.image_url_pattern.search(message.content)  # Has image links
-            )
-            if text_only_config and has_restricted_content:
-                await message.delete()
-                redirect_channel = self.bot.get_channel(
-                    int(text_only_config["redirect_channel_id"])
-                )
-                if redirect_channel:
-                    warn_msg = await message.channel.send(
-                        f"🚫 {message.author.mention}, please use {redirect_channel.mention} for media. This channel is for text only."
-                    )
-                    await asyncio.sleep(15)
-                    await warn_msg.delete()
-                return
+            
+            # If allowed list is set (non-zero), check if message contains ONLY allowed types
+            if allowed_flags > 0:
+                # Check if message contains any content NOT in the allowed list
+                disallowed_content = detected_content & ~allowed_flags
+                if disallowed_content:
+                    disallowed_types = self.get_content_type_names(disallowed_content)
+                    log.debug(f"Message blocked in {message.channel.name}: contains disallowed content: {', '.join(disallowed_types)}")
+                    await message.delete()
+                    
+                    # Send redirect message if configured
+                    if redirect_channel_id:
+                        redirect_channel = self.bot.get_channel(int(redirect_channel_id))
+                        if redirect_channel:
+                            allowed_types = self.get_content_type_names(allowed_flags)
+                            warn_msg = await message.channel.send(
+                                f"🚫 {message.author.mention}, this channel only allows **{', '.join(allowed_types)}**. "
+                                f"Please use {redirect_channel.mention} for other content."
+                            )
+                            await asyncio.sleep(15)
+                            try:
+                                await warn_msg.delete()
+                            except:
+                                pass
+                    return
 
         except discord.Forbidden:
             log.warning(
                 f"Missing permissions to delete message in channel {channel_id} (Guild: {guild_id})."
             )
         except discord.NotFound:
+            # Message was deleted by another bot or moderator in the meantime
             pass
         except Exception as e:
-            log.error(f"Error in NoTextManager on_message handler: {e}")
+            log.error(f"Error in NoTextManager on_message handler: {e}", exc_info=True)
 
     def register_commands(self):
         """Registers all slash commands for this manager."""
 
         @self.bot.tree.command(
             name="n1-setup-no-text",
-            description="Configure a channel to only allow media and links.",
+            description="Configure a channel to only allow media and links (media-only).",
         )
         @app_commands.checks.has_permissions(manage_channels=True)
         async def setup_no_text(
@@ -162,14 +239,33 @@ class NoTextManager:
             redirect_channel: discord.TextChannel,
         ):
             await interaction.response.defer(ephemeral=True)
-            query = "INSERT INTO public.no_text_channels (guild_id, channel_id, guild_name, channel_name, redirect_channel_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, channel_id) DO UPDATE SET redirect_channel_id = $5"
+            
+            # Check if channel already has a restriction
+            existing = await self.pool.fetchval(
+                "SELECT id FROM public.channel_restrictions_v2 WHERE guild_id = $1 AND channel_id = $2",
+                str(interaction.guild.id), str(channel.id)
+            )
+            
+            if existing:
+                await interaction.followup.send(
+                    f"❌ {channel.mention} already has a restriction. Please remove it first.",
+                    ephemeral=True
+                )
+                return
+
+            query = """
+                INSERT INTO public.channel_restrictions_v2 
+                (guild_id, channel_id, channel_name, restriction_type, redirect_channel_id, redirect_channel_name, configured_by)
+                VALUES ($1, $2, $3, 'media_only', $4, $5, $6)
+            """
             await self.pool.execute(
                 query,
                 str(interaction.guild.id),
                 str(channel.id),
-                interaction.guild.name,
                 channel.name,
                 str(redirect_channel.id),
+                redirect_channel.name,
+                str(interaction.user.id)
             )
             await interaction.followup.send(
                 f"✅ Media-only rule has been set for {channel.mention}. Text-only messages will be redirected to {redirect_channel.mention}.",
@@ -186,11 +282,12 @@ class NoTextManager:
         ):
             await interaction.response.defer(ephemeral=True)
             result = await self.pool.execute(
-                "DELETE FROM public.no_text_channels WHERE guild_id = $1 AND channel_id = $2",
+                "DELETE FROM public.channel_restrictions_v2 WHERE guild_id = $1 AND channel_id = $2 AND restriction_type = 'media_only'",
                 str(interaction.guild.id),
                 str(channel.id),
             )
-            if result == "DELETE 1":
+
+            if "DELETE 1" in result:
                 await interaction.followup.send(
                     f"✅ The media-only restriction has been removed from {channel.mention}.",
                     ephemeral=True,
@@ -289,14 +386,25 @@ class NoTextManager:
             interaction: discord.Interaction, channel: discord.TextChannel
         ):
             await interaction.response.defer(ephemeral=True)
-            query = "INSERT INTO public.no_discord_links_channels (guild_id, channel_id, guild_name, channel_name) VALUES ($1, $2, $3, $4) ON CONFLICT (guild_id, channel_id) DO NOTHING"
-            await self.pool.execute(
-                query,
-                str(interaction.guild.id),
-                str(channel.id),
-                interaction.guild.name,
-                channel.name,
+            
+            existing = await self.pool.fetchval(
+                "SELECT id FROM public.channel_restrictions_v2 WHERE guild_id = $1 AND channel_id = $2",
+                str(interaction.guild.id), str(channel.id)
             )
+            
+            if existing:
+                await interaction.followup.send(
+                    f"❌ {channel.mention} already has a restriction. Please remove it first.",
+                    ephemeral=True
+                )
+                return
+
+            query = """
+                INSERT INTO public.channel_restrictions_v2 
+                (guild_id, channel_id, channel_name, restriction_type, configured_by)
+                VALUES ($1, $2, $3, 'block_invites', $4)
+            """
+            await self.pool.execute(query, str(interaction.guild.id), str(channel.id), channel.name, str(interaction.user.id))
             await interaction.followup.send(
                 f"✅ Discord invite links will now be deleted in {channel.mention}.",
                 ephemeral=True,
@@ -310,14 +418,25 @@ class NoTextManager:
             interaction: discord.Interaction, channel: discord.TextChannel
         ):
             await interaction.response.defer(ephemeral=True)
-            query = "INSERT INTO public.no_links_channels (guild_id, channel_id, guild_name, channel_name) VALUES ($1, $2, $3, $4) ON CONFLICT (guild_id, channel_id) DO NOTHING"
-            await self.pool.execute(
-                query,
-                str(interaction.guild.id),
-                str(channel.id),
-                interaction.guild.name,
-                channel.name,
+            
+            existing = await self.pool.fetchval(
+                "SELECT id FROM public.channel_restrictions_v2 WHERE guild_id = $1 AND channel_id = $2",
+                str(interaction.guild.id), str(channel.id)
             )
+            
+            if existing:
+                await interaction.followup.send(
+                    f"❌ {channel.mention} already has a restriction. Please remove it first.",
+                    ephemeral=True
+                )
+                return
+
+            query = """
+                INSERT INTO public.channel_restrictions_v2 
+                (guild_id, channel_id, channel_name, restriction_type, configured_by)
+                VALUES ($1, $2, $3, 'block_all_links', $4)
+            """
+            await self.pool.execute(query, str(interaction.guild.id), str(channel.id), channel.name, str(interaction.user.id))
             await interaction.followup.send(
                 f"✅ All links will now be deleted in {channel.mention}.",
                 ephemeral=True,
@@ -333,11 +452,12 @@ class NoTextManager:
         ):
             await interaction.response.defer(ephemeral=True)
             result = await self.pool.execute(
-                "DELETE FROM public.no_discord_links_channels WHERE guild_id = $1 AND channel_id = $2",
+                "DELETE FROM public.channel_restrictions_v2 WHERE guild_id = $1 AND channel_id = $2 AND restriction_type = 'block_invites'",
                 str(interaction.guild.id),
                 str(channel.id),
             )
-            if result == "DELETE 1":
+
+            if "DELETE 1" in result:
                 await interaction.followup.send(
                     f"✅ Removed the no-discord-link rule from {channel.mention}.",
                     ephemeral=True,
@@ -358,11 +478,12 @@ class NoTextManager:
         ):
             await interaction.response.defer(ephemeral=True)
             result = await self.pool.execute(
-                "DELETE FROM public.no_links_channels WHERE guild_id = $1 AND channel_id = $2",
+                "DELETE FROM public.channel_restrictions_v2 WHERE guild_id = $1 AND channel_id = $2 AND restriction_type = 'block_all_links'",
                 str(interaction.guild.id),
                 str(channel.id),
             )
-            if result == "DELETE 1":
+
+            if "DELETE 1" in result:
                 await interaction.followup.send(
                     f"✅ Removed the no-links rule from {channel.mention}.",
                     ephemeral=True,
@@ -373,11 +494,9 @@ class NoTextManager:
                     ephemeral=True,
                 )
 
-        # NEW COMMANDS FOR TEXT-ONLY FEATURE
-
         @self.bot.tree.command(
             name="n10-setup-text-only",
-            description="Configure a channel to only allow plain text (no images, attachments, embeds).",
+            description="Configure a channel to only allow plain text (no media).",
         )
         @app_commands.checks.has_permissions(manage_channels=True)
         async def setup_text_only(
@@ -386,14 +505,32 @@ class NoTextManager:
             redirect_channel: discord.TextChannel,
         ):
             await interaction.response.defer(ephemeral=True)
-            query = "INSERT INTO public.text_only_channels (guild_id, channel_id, guild_name, channel_name, redirect_channel_id) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, channel_id) DO UPDATE SET redirect_channel_id = $5"
+            
+            existing = await self.pool.fetchval(
+                "SELECT id FROM public.channel_restrictions_v2 WHERE guild_id = $1 AND channel_id = $2",
+                str(interaction.guild.id), str(channel.id)
+            )
+            
+            if existing:
+                await interaction.followup.send(
+                    f"❌ {channel.mention} already has a restriction. Please remove it first.",
+                    ephemeral=True
+                )
+                return
+
+            query = """
+                INSERT INTO public.channel_restrictions_v2 
+                (guild_id, channel_id, channel_name, restriction_type, redirect_channel_id, redirect_channel_name, configured_by)
+                VALUES ($1, $2, $3, 'text_only', $4, $5, $6)
+            """
             await self.pool.execute(
                 query,
                 str(interaction.guild.id),
                 str(channel.id),
-                interaction.guild.name,
                 channel.name,
                 str(redirect_channel.id),
+                redirect_channel.name,
+                str(interaction.user.id)
             )
             await interaction.followup.send(
                 f"✅ Text-only rule has been set for {channel.mention}. Media will be redirected to {redirect_channel.mention}.",
@@ -410,11 +547,12 @@ class NoTextManager:
         ):
             await interaction.response.defer(ephemeral=True)
             result = await self.pool.execute(
-                "DELETE FROM public.text_only_channels WHERE guild_id = $1 AND channel_id = $2",
+                "DELETE FROM public.channel_restrictions_v2 WHERE guild_id = $1 AND channel_id = $2 AND restriction_type = 'text_only'",
                 str(interaction.guild.id),
                 str(channel.id),
             )
-            if result == "DELETE 1":
+
+            if "DELETE 1" in result:
                 await interaction.followup.send(
                     f"✅ The text-only restriction has been removed from {channel.mention}.",
                     ephemeral=True,
@@ -425,4 +563,4 @@ class NoTextManager:
                     ephemeral=True,
                 )
 
-        log.info("💻 No-Text commands registered.")
+        log.info("💻 All No-Text commands registered.")

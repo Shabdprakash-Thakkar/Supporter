@@ -20,9 +20,9 @@ sys.path.insert(0, str(PYTHON_FILES_DIR))
 sys.path.insert(0, str(FLASK_DIR))
 
 # Read from .env file
-SERVER_IP = os.getenv("SERVER_IP", "194.164.56.164")
-SERVER_PORT = os.getenv("FLASK_PORT", "9528")
-SERVER_DOMAIN = os.getenv("SERVER_DOMAIN", "https://shabdprakash-thakkar.online")
+SERVER_IP = os.getenv("SERVER_IP", "127.0.0.1") # Use actual server IP in production
+SERVER_PORT = os.getenv("FLASK_PORT", "5000") # Use desired port in production
+SERVER_DOMAIN = os.getenv("SERVER_DOMAIN", "http://localhost") # Use actual domain in production
 
 
 def run_discord_bot():

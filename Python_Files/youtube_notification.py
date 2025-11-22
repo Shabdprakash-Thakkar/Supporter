@@ -205,7 +205,7 @@ class YouTubeManager:
 
                     video_id = video_info["video_id"]
                     published_at = video_info["published_at"]
-                    age_days = (datetime.now(timezone.utc) - published_at).days
+                    age_days = (datetime.now(IST) - published_at.astimezone(IST)).days
 
                     # CRITICAL: Check database FIRST before doing anything
                     log_exists = await self.pool.fetchval(
@@ -259,20 +259,52 @@ class YouTubeManager:
 
     async def send_notification(self, config: dict, video_info: dict):
         guild = self.bot.get_guild(int(config["guild_id"]))
+        if not guild:
+            return
+
         channel = self.bot.get_channel(int(config["target_channel_id"]))
-        if not guild or not channel:
+        if not channel:
             return
 
         role = (
             guild.get_role(int(config["mention_role_id"]))
-            if config["mention_role_id"]
+            if config.get("mention_role_id")
             else None
         )
-        mention = role.mention if role else "@here"
-        message = f"🔔 {mention} **{video_info['channel_name']}** just uploaded a new video!\n\n**{video_info['title']}**\n{video_info['link']}"
+
+        # Use custom message from config, with a simple fallback
+        message_template = config.get(
+            "custom_message",
+            "**{channel_name}** uploaded: **{video_title}**\n{video_url}",
+        )
+
+        # --- ✨ Improved Placeholder Replacement Logic ---
+
+        # 1. Standard replacements
+        message = message_template.replace("{channel_name}", video_info["channel_name"])
+        message = message.replace("{video_title}", video_info["title"])
+        message = message.replace("{video_url}", video_info["link"])
+        message = message.replace("{@everyone}", "@everyone")
+        message = message.replace("{@here}", "@here")
+
+        # 2. Handle the role placeholder intelligently
+        if role:
+            # If a role is set, replace {@role} with the mention
+            message = message.replace("{@role}", role.mention)
+        else:
+            # If no role is set, remove the placeholder and any space right after it
+            # This prevents "🔔  **Channel**..." (with a double space)
+            message = message.replace("{@role} ", "")
+            message = message.replace(
+                "{@role}", ""
+            )  # Catches cases with no trailing space
+
+        # 3. Final cleanup of any accidental double spaces
+        message = message.replace("  ", " ").strip()
 
         try:
-            await channel.send(message)
+            # Send the final, clean message
+            await channel.send(message, allowed_mentions=discord.AllowedMentions.all())
             log.info(
                 f"✅ Sent notification for video {video_info['video_id']} to guild {config['guild_id']}"
             )
@@ -286,7 +318,7 @@ class YouTubeManager:
     @check_for_videos.before_loop
     async def before_check_for_videos(self):
         await self.bot.wait_until_ready()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(IST)
         minutes_to_wait = 15 - (now.minute % 15)
         await asyncio.sleep((minutes_to_wait * 60) - now.second)
 
@@ -448,10 +480,6 @@ class YouTubeManager:
                     "Please check the logs or try again."
                 )
 
-        # -------------------------
-        # y2, y3, y4, y5 commands
-        # (unchanged from your file)
-        # -------------------------
         @self.bot.tree.command(
             name="y2-setup-youtube-notifications",
             description="Set up notifications for a YouTube channel.",
@@ -490,22 +518,24 @@ class YouTubeManager:
 
                 if existing:
                     await self.pool.execute(
-                        "UPDATE public.youtube_notification_config SET target_channel_id = $1, mention_role_id = $2, is_enabled = TRUE WHERE guild_id = $3 AND yt_channel_id = $4",
+                        "UPDATE public.youtube_notification_config SET target_channel_id = $1, mention_role_id = $2, is_enabled = TRUE, yt_channel_name = $5 WHERE guild_id = $3 AND yt_channel_id = $4",
                         str(notification_channel.id),
                         str(role_to_mention.id),
                         guild_id,
                         youtube_channel_id,
+                        channel_name,
                     )
                     await interaction.followup.send(
                         f"✅ Updated YouTube notifications for **{channel_name}**.\nNotifications will be posted in {notification_channel.mention} with {role_to_mention.mention}."
                     )
                 else:
                     await self.pool.execute(
-                        "INSERT INTO public.youtube_notification_config (guild_id, yt_channel_id, target_channel_id, mention_role_id, is_enabled) VALUES ($1, $2, $3, $4, TRUE)",
+                        "INSERT INTO public.youtube_notification_config (guild_id, yt_channel_id, target_channel_id, mention_role_id, is_enabled, yt_channel_name) VALUES ($1, $2, $3, $4, TRUE, $5)",
                         guild_id,
                         youtube_channel_id,
                         str(notification_channel.id),
                         str(role_to_mention.id),
+                        channel_name,
                     )
 
                     # Auto-seed recent videos for new setups
@@ -526,7 +556,9 @@ class YouTubeManager:
 
                             video_id = video_info["video_id"]
                             published_at = video_info["published_at"]
-                            age_days = (datetime.now(timezone.utc) - published_at).days
+                            age_days = (
+                                datetime.now(IST) - published_at.astimezone(IST)
+                            ).days
 
                             # Check if already logged
                             exists = await self.pool.fetchval(
@@ -537,9 +569,7 @@ class YouTubeManager:
                             )
 
                             if not exists:
-                                # Mark videos older than 2 days as 'seeded'
-                                # Mark videos 2 days or newer as 'none' (so they can be notified)
-                                status = "seeded" if age_days > 2 else "none"
+                                status = "none" if age_days > 2 else "seeded"
 
                                 await self.pool.execute(
                                     "INSERT INTO public.youtube_notification_logs (guild_id, yt_channel_id, video_id, video_status) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
@@ -549,21 +579,15 @@ class YouTubeManager:
                                     status,
                                 )
                                 seeded_count += 1
-
                                 if age_days > 2:
                                     skipped_old += 1
 
-                        recent_videos = seeded_count - skipped_old
                         log.info(
-                            f"✅ Seeded {seeded_count} videos for guild {guild_id}, channel {youtube_channel_id} ({skipped_old} old, {recent_videos} recent)"
+                            f"✅ Seeded {seeded_count} videos for guild {guild_id}, channel {youtube_channel_id} ({skipped_old} old)"
                         )
 
-                        # Send follow-up message about seeding
                         await interaction.channel.send(
-                            f"✅ **Seeding Complete!** Processed {seeded_count} videos:\n"
-                            f"📦 Marked {skipped_old} old videos (>2 days) as seen\n"
-                            f"🔔 Kept {recent_videos} recent videos (≤2 days) for potential notification\n\n"
-                            f"You will now receive notifications for new videos uploaded after this point.",
+                            f"✅ **Seeding Complete!** Processed the latest {seeded_count} videos to prevent old notifications. You will now receive alerts for new uploads.",
                             delete_after=45,
                         )
 
@@ -578,6 +602,9 @@ class YouTubeManager:
             description="Disable YouTube notifications for a channel.",
         )
         @app_commands.checks.has_permissions(manage_guild=True)
+        @app_commands.describe(
+            youtube_channel_id="The ID of the YouTube channel (starts with UC)."
+        )
         async def disable_notifications(
             interaction: discord.Interaction, youtube_channel_id: str
         ):
@@ -590,9 +617,9 @@ class YouTubeManager:
                 youtube_channel_id,
             )
 
-            if result == "UPDATE 0":
+            if "UPDATE 0" in result:
                 await interaction.followup.send(
-                    "❌ No notifications found for that channel in this server."
+                    "❌ No notifications found for that channel ID in this server."
                 )
             else:
                 await interaction.followup.send(
@@ -609,7 +636,7 @@ class YouTubeManager:
             guild_id = str(interaction.guild_id)
 
             configs = await self.pool.fetch(
-                "SELECT * FROM public.youtube_notification_config WHERE guild_id = $1",
+                "SELECT * FROM public.youtube_notification_config WHERE guild_id = $1 ORDER BY yt_channel_name",
                 guild_id,
             )
 
@@ -620,18 +647,23 @@ class YouTubeManager:
                 return
 
             embed = discord.Embed(
-                title="📺 YouTube Notification Configurations",
+                title=f"📺 YouTube Notifications for {interaction.guild.name}",
                 color=0xFF0000,
             )
 
             for config in configs:
                 status = "✅ Enabled" if config["is_enabled"] else "❌ Disabled"
                 channel = self.bot.get_channel(int(config["target_channel_id"]))
-                role = interaction.guild.get_role(int(config["mention_role_id"]))
+                role_id = config.get("mention_role_id")
+                role = interaction.guild.get_role(int(role_id)) if role_id else None
+                channel_name = config.get("yt_channel_name") or "Unknown Name"
 
                 embed.add_field(
-                    name=f"Channel ID: {config['yt_channel_id']}",
-                    value=f"**Status:** {status}\n**Target Channel:** {channel.mention if channel else 'Unknown'}\n**Mention Role:** {role.mention if role else 'Unknown'}",
+                    name=f"🎬 {channel_name}",
+                    value=f"**ID:** `{config['yt_channel_id']}`\n"
+                    f"**Status:** {status}\n"
+                    f"**Posts in:** {channel.mention if channel else '`Channel Deleted`'}\n"
+                    f"**Mentions:** {role.mention if role else '`@here`'}",
                     inline=False,
                 )
 
@@ -639,9 +671,12 @@ class YouTubeManager:
 
         @self.bot.tree.command(
             name="y5-test-rss-feed",
-            description="Test the RSS feed for a YouTube channel and see what videos would be processed.",
+            description="Test the RSS feed for a YouTube channel and see the latest videos.",
         )
         @app_commands.checks.has_permissions(manage_guild=True)
+        @app_commands.describe(
+            youtube_channel_id="The ID of the YouTube channel (starts with UC)."
+        )
         async def test_rss_feed(
             interaction: discord.Interaction, youtube_channel_id: str
         ):
@@ -651,14 +686,14 @@ class YouTubeManager:
                 feed = await self.fetch_rss_feed(youtube_channel_id)
                 if not feed or not feed.entries:
                     await interaction.followup.send(
-                        "❌ Could not fetch RSS feed or no videos found for this channel."
+                        "❌ Could not fetch RSS feed or no videos found for this channel. Please verify the Channel ID."
                     )
                     return
 
                 channel_name = feed.feed.get("title", "Unknown Channel")
                 embed = discord.Embed(
                     title=f"🎬 RSS Feed Test: {channel_name}",
-                    description=f"Latest videos from this channel:",
+                    description=f"Found {len(feed.entries)} video(s) in the feed. Showing the 5 most recent:",
                     color=0xFF0000,
                 )
 
@@ -667,13 +702,12 @@ class YouTubeManager:
                     if not video_info:
                         continue
 
-                    age_days = (
-                        datetime.now(timezone.utc) - video_info["published_at"]
-                    ).days
+                    age = datetime.now(IST) - video_info["published_at"].astimezone(IST)
 
                     embed.add_field(
-                        name=f"{i+1}. {video_info['title'][:100]}",
-                        value=f"**Published:** {age_days} days ago\n**Link:** [Watch]({video_info['link']})",
+                        name=f"{i+1}. {video_info['title'][:250]}",
+                        value=f"**Published:** {discord.utils.format_dt(video_info['published_at'], 'R')}\n"
+                        f"**Link:** [Watch Video]({video_info['link']})",
                         inline=False,
                     )
 

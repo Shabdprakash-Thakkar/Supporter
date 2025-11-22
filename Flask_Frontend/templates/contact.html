@@ -1,5 +1,6 @@
 {% extends "base.html" %} {% block title %}Contact Us - Supporter BOT{% endblock
 %} {% block content %}
+
 <!-- Contact Hero -->
 <section class="contact-hero bg-gradient-primary text-white py-5">
   <div class="container text-center py-5">
@@ -26,44 +27,32 @@
               <label for="name" class="form-label fw-semibold">
                 <i class="fas fa-user text-primary me-2"></i>Your Name
               </label>
-              <input
-                type="text"
-                class="form-control form-control-lg"
-                id="name"
-                name="name"
-                placeholder="John Doe"
-                required
-              />
+              <input type="text" class="form-control form-control-lg" id="name" name="name" placeholder="John Doe"
+                maxlength="100" required />
             </div>
 
             <div class="mb-4">
               <label for="email" class="form-label fw-semibold">
                 <i class="fas fa-at text-primary me-2"></i>Email Address
               </label>
-              <input
-                type="email"
-                class="form-control form-control-lg"
-                id="email"
-                name="email"
-                placeholder="john@example.com"
-                required
-              />
+              <input type="email" class="form-control form-control-lg" id="email" name="email"
+                placeholder="john@example.com" maxlength="150" required />
             </div>
 
             <div class="mb-4">
               <label for="subject" class="form-label fw-semibold">
                 <i class="fas fa-tag text-primary me-2"></i>Subject
               </label>
-              <select
-                class="form-select form-select-lg"
-                id="subject"
-                name="subject"
-              >
-                <option selected>General Inquiry</option>
-                <option>Bug Report</option>
-                <option>Feature Request</option>
-                <option>Partnership</option>
-                <option>Other</option>
+              <select class="form-select form-select-lg" id="subject" name="subject" required>
+                <option value="" disabled selected>
+                  -- Select a subject --
+                </option>
+                <option value="General Inquiry">General Inquiry</option>
+                <option value="Bug Report">Bug Report</option>
+                <option value="Feature Request">Feature Request</option>
+                <option value="Partnership">Partnership</option>
+                <option value="Technical Support">Technical Support</option>
+                <option value="Other">Other</option>
               </select>
             </div>
 
@@ -72,91 +61,110 @@
                 <i class="fas fa-comment-dots text-primary me-2"></i>Your
                 Message
               </label>
-              <textarea
-                class="form-control form-control-lg"
-                id="message"
-                name="message"
-                rows="6"
-                placeholder="Tell us what's on your mind..."
-                required
-              ></textarea>
+              <textarea class="form-control form-control-lg" id="message" name="message" rows="6"
+                placeholder="Tell us what's on your mind..." minlength="10" maxlength="2000" required></textarea>
+              <small class="text-muted">
+                <span id="charCount">0</span>/2000 characters
+              </small>
             </div>
 
             <div id="formMessage" class="alert d-none" role="alert"></div>
 
-            <button
-              type="submit"
-              class="btn btn-primary btn-lg px-5 w-100"
-              id="submitBtn"
-            >
+            <button type="submit" class="btn btn-primary btn-lg px-5 w-100" id="submitBtn">
               <i class="fas fa-paper-plane me-2"></i>Send Message
             </button>
           </form>
         </div>
+
+        <!-- âœ¨ NEW: Direct Email Section -->
+        <div class="direct-email-card bg-white p-4 rounded-4 shadow-sm mt-4" data-aos="fade-up">
+          <div class="d-flex align-items-center">
+            <div class="icon-box bg-primary bg-opacity-10 rounded-circle p-3 me-3">
+              <i class="fas fa-envelope-open-text text-primary fs-4"></i>
+            </div>
+            <div>
+              <h5 class="fw-bold mb-1">Direct Email</h5>
+              <p class="text-muted mb-0">
+                <i class="fas fa-at me-2"></i>
+                <a href="mailto:your-email@example.com" class="text-decoration-none">
+                  shabdprakash95@gmail.com
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Contact Information -->
+      <!-- Right Sidebar -->
       <div class="col-lg-5" data-aos="fade-left">
         <div class="contact-info">
-          <!-- Quick Stats -->
+          <!-- Auto-Updating Stats -->
           <div class="info-card bg-white p-4 rounded-4 shadow-sm mb-4">
             <h4 class="fw-bold mb-4">
               <i class="fas fa-chart-line text-primary me-2"></i>Live Bot Stats
             </h4>
+
             <div class="d-flex align-items-center mb-3">
-              <div
-                class="icon-box bg-primary bg-opacity-10 rounded-circle p-3 me-3"
-              >
+              <div class="icon-box bg-primary bg-opacity-10 rounded-circle p-3 me-3">
                 <i class="fas fa-server text-primary fs-5"></i>
               </div>
-              <div>
+              <div class="flex-grow-1">
                 <h6 class="mb-0 fw-semibold">Active Servers</h6>
                 <p class="text-muted mb-0" id="contact-stat-servers">
-                  Loading...
+                  <span class="spinner-border spinner-border-sm"></span>
                 </p>
               </div>
             </div>
+
             <div class="d-flex align-items-center mb-3">
-              <div
-                class="icon-box bg-success bg-opacity-10 rounded-circle p-3 me-3"
-              >
+              <div class="icon-box bg-success bg-opacity-10 rounded-circle p-3 me-3">
                 <i class="fas fa-users text-success fs-5"></i>
               </div>
-              <div>
+              <div class="flex-grow-1">
                 <h6 class="mb-0 fw-semibold">Total Users</h6>
                 <p class="text-muted mb-0" id="contact-stat-users">
-                  Loading...
+                  <span class="spinner-border spinner-border-sm"></span>
                 </p>
               </div>
             </div>
+
             <div class="d-flex align-items-center mb-3">
-              <div
-                class="icon-box bg-warning bg-opacity-10 rounded-circle p-3 me-3"
-              >
+              <div class="icon-box bg-warning bg-opacity-10 rounded-circle p-3 me-3">
                 <i class="fas fa-terminal text-warning fs-5"></i>
               </div>
-              <div>
+              <div class="flex-grow-1">
                 <h6 class="mb-0 fw-semibold">Commands Used</h6>
                 <p class="text-muted mb-0" id="contact-stat-commands">
-                  Loading...
+                  <span class="spinner-border spinner-border-sm"></span>
                 </p>
               </div>
             </div>
-            <div class="d-flex align-items-center">
-              <div
-                class="icon-box bg-info bg-opacity-10 rounded-circle p-3 me-3"
-              >
+
+            <div class="d-flex align-items-center mb-3">
+              <div class="icon-box bg-info bg-opacity-10 rounded-circle p-3 me-3">
                 <i class="fas fa-shield-alt text-info fs-5"></i>
               </div>
-              <div>
+              <div class="flex-grow-1">
                 <h6 class="mb-0 fw-semibold">Uptime</h6>
                 <p class="text-muted mb-0" id="contact-stat-uptime">99.9%</p>
               </div>
             </div>
+
+            <div class="d-flex align-items-center">
+              <div class="icon-box bg-secondary bg-opacity-10 rounded-circle p-3 me-3">
+                <i class="fas fa-code text-secondary fs-5"></i>
+              </div>
+              <div class="flex-grow-1">
+                <h6 class="mb-0 fw-semibold">Total Commands</h6>
+                <p class="text-muted mb-0" id="contact-stat-total-commands">
+                  <span class="spinner-border spinner-border-sm"></span>
+                </p>
+              </div>
+            </div>
+
             <div class="mt-3 text-center">
-              <small class="text-muted">
-                <i class="fas fa-sync-alt me-1"></i>
-                Updates every 3 minutes
+              <small class="text-muted" id="contact-stats-last-updated">
+                <i class="fas fa-sync-alt me-1"></i>Loading stats...
               </small>
             </div>
           </div>
@@ -167,33 +175,24 @@
               <i class="fas fa-share-alt text-primary me-2"></i>Connect With Us
             </h4>
             <div class="social-links-grid d-grid gap-3">
-              <a
-                href="https://discord.gg/NbNNU24HjF"
-                target="_blank"
-                class="social-link-card p-3 rounded-3 bg-light text-decoration-none d-flex align-items-center hover-lift"
-              >
+              <a href="https://discord.gg/" target="_blank"
+                class="social-link-card p-3 rounded-3 bg-light text-decoration-none d-flex align-items-center hover-lift">
                 <i class="fab fa-discord text-primary fs-3 me-3"></i>
                 <div>
                   <h6 class="mb-0 fw-semibold text-dark">Discord</h6>
                   <p class="text-muted mb-0 small">Join our server</p>
                 </div>
               </a>
-              <a
-                href="https://github.com/Shabdprakash-Thakkar"
-                target="_blank"
-                class="social-link-card p-3 rounded-3 bg-light text-decoration-none d-flex align-items-center hover-lift"
-              >
+              <a href="https://github.com/" target="_blank"
+                class="social-link-card p-3 rounded-3 bg-light text-decoration-none d-flex align-items-center hover-lift">
                 <i class="fab fa-github text-dark fs-3 me-3"></i>
                 <div>
                   <h6 class="mb-0 fw-semibold text-dark">GitHub</h6>
                   <p class="text-muted mb-0 small">View source code</p>
                 </div>
               </a>
-              <a
-                href="https://www.instagram.com/study_time_95/"
-                target="_blank"
-                class="social-link-card p-3 rounded-3 bg-light text-decoration-none d-flex align-items-center hover-lift"
-              >
+              <a href="https://www.instagram.com/" target="_blank"
+                class="social-link-card p-3 rounded-3 bg-light text-decoration-none d-flex align-items-center hover-lift">
                 <i class="fab fa-instagram text-info fs-3 me-3"></i>
                 <div>
                   <h6 class="mb-0 fw-semibold text-dark">Instagram</h6>
@@ -203,37 +202,25 @@
             </div>
           </div>
 
-          <!-- FAQ Quick Links -->
-          <div
-            class="info-card bg-gradient-primary text-white p-4 rounded-4 shadow-sm"
-          >
+          <!-- Need Help Card -->
+          <div class="info-card bg-gradient-primary text-white p-4 rounded-4 shadow-sm">
             <h4 class="fw-bold mb-3">
               <i class="fas fa-question-circle me-2"></i>Need Help?
             </h4>
             <p class="mb-3">Check out these resources first:</p>
             <ul class="list-unstyled">
               <li class="mb-2">
-                <a
-                  href="{{ url_for('index') }}#commands"
-                  class="text-white text-decoration-none"
-                >
+                <a href="{{ url_for('index') }}#commands" class="text-white text-decoration-none">
                   <i class="fas fa-terminal me-2"></i>Command List
                 </a>
               </li>
               <li class="mb-2">
-                <a
-                  href="{{ url_for('index') }}#features"
-                  class="text-white text-decoration-none"
-                >
+                <a href="{{ url_for('index') }}#features" class="text-white text-decoration-none">
                   <i class="fas fa-star me-2"></i>Features Overview
                 </a>
               </li>
               <li>
-                <a
-                  href="{{ invite_url }}"
-                  class="text-white text-decoration-none"
-                  target="_blank"
-                >
+                <a href="{{ invite_url }}" class="text-white text-decoration-none" target="_blank">
                   <i class="fab fa-discord me-2"></i>Add to Discord
                 </a>
               </li>
@@ -244,101 +231,161 @@
     </div>
   </div>
 </section>
-{% endblock %} {% block extra_js %}
-<script>
-  // Fetch and update stats on contact page
-  function updateContactStats() {
-    fetch("/api/stats")
-      .then((response) => response.json())
-      .then((data) => {
-        document.getElementById("contact-stat-servers").textContent =
-          data.total_servers.toLocaleString() + " servers";
-        document.getElementById("contact-stat-users").textContent =
-          data.total_users.toLocaleString() + " users";
-        document.getElementById("contact-stat-commands").textContent =
-          data.commands_used.toLocaleString() + " commands";
-        document.getElementById("contact-stat-uptime").textContent =
-          data.uptime;
-      })
-      .catch((error) => {
-        console.error("Error fetching stats:", error);
-        document.getElementById("contact-stat-servers").textContent =
-          "2+ servers";
-        document.getElementById("contact-stat-users").textContent = "64+ users";
-        document.getElementById("contact-stat-commands").textContent =
-          "0+ commands";
-      });
+
+{% endblock %} {% block extra_css %}
+<style>
+  /* âœ¨ Direct Email Card Styling */
+  .direct-email-card {
+    border: 5px solid rgba(88, 101, 242, 0.2);
+    transition: all 0.3s ease;
   }
 
-  // Update stats on page load
-  updateContactStats();
+  .direct-email-card:hover {
+    border-color: rgba(88, 101, 242, 0.5);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(88, 101, 242, 0.15) !important;
+  }
 
-  // Contact form submission
-  document
-    .getElementById("contactForm")
-    .addEventListener("submit", async function (e) {
+  .direct-email-card a {
+    color: #5865f2;
+    font-weight: 600;
+    transition: color 0.2s ease;
+  }
+
+  .direct-email-card a:hover {
+    color: #4752c4;
+    text-decoration: underline !important;
+  }
+
+  /* Character counter styling */
+  #charCount {
+    font-weight: 600;
+    color: #5865f2;
+  }
+</style>
+{% endblock %} 
+{% block extra_js %}
+<script>
+  // ===================================================================
+  // PART 1: CODE SPECIFIC TO THE CONTACT PAGE (FORM & CHAR COUNTER)
+  // ===================================================================
+
+  // Character Counter
+  const messageTextarea = document.getElementById("message");
+  const charCountSpan = document.getElementById("charCount");
+  if (messageTextarea) {
+    messageTextarea.addEventListener("input", function () {
+      const currentLength = this.value.length;
+      charCountSpan.textContent = currentLength;
+      if (currentLength > 1900) charCountSpan.style.color = "#ED4245";
+      else if (currentLength > 1500) charCountSpan.style.color = "#FEE75C";
+      else charCountSpan.style.color = "#5865F2";
+    });
+  }
+
+  // Form Submission
+  const contactForm = document.getElementById("contactForm");
+  if (contactForm) {
+    contactForm.addEventListener("submit", async function (e) {
       e.preventDefault();
-
       const submitBtn = document.getElementById("submitBtn");
       const formMessage = document.getElementById("formMessage");
       const originalBtnText = submitBtn.innerHTML;
-
-      // Disable button and show loading
       submitBtn.disabled = true;
-      submitBtn.innerHTML =
-        '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
-
-      // Get form data
-      const formData = {
-        name: document.getElementById("name").value,
-        email: document.getElementById("email").value,
-        subject: document.getElementById("subject").value,
-        message: document.getElementById("message").value,
-      };
-
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+      const formData = { name: document.getElementById("name").value.trim(), email: document.getElementById("email").value.trim(), subject: document.getElementById("subject").value, message: document.getElementById("message").value.trim() };
       try {
-        const response = await fetch("/api/contact", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        });
-
+        const response = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formData) });
         const data = await response.json();
-
-        // Show message
-        formMessage.classList.remove("d-none");
-
         if (response.ok) {
-          formMessage.classList.remove("alert-danger");
-          formMessage.classList.add("alert-success");
-          formMessage.innerHTML =
-            '<i class="fas fa-check-circle me-2"></i>' + data.message;
-
-          // Reset form
-          document.getElementById("contactForm").reset();
+          showFormMessage(data.message, "success");
+          contactForm.reset();
+          if (charCountSpan) charCountSpan.textContent = "0";
         } else {
-          formMessage.classList.remove("alert-success");
-          formMessage.classList.add("alert-danger");
-          formMessage.innerHTML =
-            '<i class="fas fa-exclamation-circle me-2"></i>' + data.message;
+          showFormMessage(data.error || "Failed to send message", "danger");
         }
-
-        // Auto-hide message after 5 seconds
-        setTimeout(() => {
-          formMessage.classList.add("d-none");
-        }, 5000);
       } catch (error) {
-        formMessage.classList.remove("d-none", "alert-success");
-        formMessage.classList.add("alert-danger");
-        formMessage.innerHTML =
-          '<i class="fas fa-exclamation-circle me-2"></i>An error occurred. Please try again.';
+        showFormMessage("An error occurred. Please try again later.", "danger");
       } finally {
-        // Re-enable button
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
       }
     });
+  }
+
+  function showFormMessage(message, type) {
+    const formMessage = document.getElementById("formMessage");
+    formMessage.className = `alert alert-${type}`;
+    const icon = type === "success" ? "check-circle" : "exclamation-circle";
+    formMessage.innerHTML = `<i class="fas fa-${icon} me-2"></i>${message}`;
+    setTimeout(() => { formMessage.className = 'alert d-none'; }, 5000);
+  }
+
+  // ===================================================================
+  // PART 2: UNIFIED AUTO-UPDATING & ANIMATED STATS
+  // (This is the improved code from index.html)
+  // ===================================================================
+
+  let statsUpdateInterval;
+
+  function animateValue(element, start, end, duration = 1000) {
+    if (!element) return;
+    const startTime = performance.now();
+    const startNum = parseFloat(start) || 0;
+    const endNum = parseFloat(end);
+    const range = endNum - startNum;
+    const step = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const value = startNum + range * progress;
+      element.textContent = Math.floor(value).toLocaleString();
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  async function updateStats() {
+    try {
+      const response = await fetch("/api/stats");
+      const data = await response.json();
+      if (data.error) return;
+
+      function updateStat(elementId, newValue) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+        const currentValue = parseFloat(element.textContent.replace(/,/g, '')) || 0;
+        if (currentValue !== newValue) {
+          animateValue(element, currentValue, newValue);
+        }
+      }
+
+      // Update stats for both index.html and contact.html
+      updateStat("stat-servers", data.total_servers);
+      updateStat("stat-users", data.total_users);
+      updateStat("stat-commands", data.commands_used);
+      updateStat("contact-stat-servers", data.total_servers);
+      updateStat("contact-stat-users", data.total_users);
+      updateStat("contact-stat-commands", data.commands_used);
+      updateStat("contact-stat-total-commands", data.total_commands);
+
+      const lastUpdated = new Date(data.last_updated);
+      const formattedTime = lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const updatedEls = [document.getElementById("stats-last-updated"), document.getElementById("contact-stats-last-updated")];
+      updatedEls.forEach(el => {
+        if (el) el.innerHTML = `<i class="fas fa-sync-alt me-1"></i>Last updated: ${formattedTime}`;
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    }
+  }
+
+  // Initialize on page load
+  document.addEventListener("DOMContentLoaded", function () {
+    updateStats();
+    statsUpdateInterval = setInterval(updateStats, 60 * 1000); // Update every minute
+  });
+
+  window.addEventListener("beforeunload", () => clearInterval(statsUpdateInterval));
+
 </script>
 {% endblock %}

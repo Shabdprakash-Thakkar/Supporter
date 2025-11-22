@@ -1,5 +1,8 @@
-{% extends "base.html" %} {% block title %}Dashboard - Supporter BOT{% endblock
-%} {% block content %} {% if current_user and current_user.is_authenticated %}
+{% extends "base.html" %}
+{% block title %}Dashboard - Supporter BOT{% endblock %}
+{% block content %}
+
+{% if current_user and current_user.is_authenticated %}
 <!-- ==================== SERVER SELECTION PAGE ==================== -->
 <section class="dashboard-section py-5">
   <div class="container py-5">
@@ -9,33 +12,32 @@
         Your Servers
       </h1>
       <p class="lead text-muted">Select a server to configure Supporter BOT</p>
+
+      <!-- ✨ NEW: Refresh Button -->
+      <div class="mt-3">
+        <a href="{{ url_for('refresh_servers') }}" class="btn btn-outline-primary">
+          <i class="fas fa-sync-alt me-2"></i>Refresh Server List
+        </a>
+        <small class="d-block text-muted mt-2">
+          <i class="fas fa-info-circle me-1"></i>
+          Click to refresh if you just added the bot to a new server
+        </small>
+      </div>
     </div>
 
     {% if servers and servers|length > 0 %}
     <div class="row g-4">
       {% for server in servers %}
       <div class="col-md-6 col-lg-4">
-        <a
-          href="{{ url_for('server_config', guild_id=server.id) }}"
-          class="text-decoration-none"
-        >
-          <div
-            class="server-card p-4 bg-white rounded-4 shadow-sm hover-lift h-100"
-          >
+        <a href="{{ url_for('server_config', guild_id=server.id) }}" class="text-decoration-none">
+          <div class="server-card p-4 bg-white rounded-4 shadow-sm hover-lift h-100">
             <div class="d-flex align-items-center mb-3">
               {% if server.icon %}
-              <img
-                src="{{ server.icon }}"
-                alt="{{ server.name }}"
-                class="rounded-circle me-3"
-                width="64"
-                height="64"
-              />
+              <img src="{{ server.icon }}" alt="{{ server.name }}" class="rounded-circle me-3" width="64" height="64" />
               {% else %}
               <div
                 class="server-icon-placeholder rounded-circle me-3 bg-primary d-flex align-items-center justify-content-center"
-                style="width: 64px; height: 64px"
-              >
+                style="width: 64px; height: 64px">
                 <i class="fas fa-server text-white fs-4"></i>
               </div>
               {% endif %}
@@ -43,9 +45,10 @@
                 <h5 class="mb-1 fw-bold text-dark">{{ server.name }}</h5>
                 <p class="text-muted mb-0 small">
                   {% if server.is_owner %}
-                  <i class="fas fa-crown text-warning me-1"></i> Owner {% else
-                  %} <i class="fas fa-shield-alt text-info me-1"></i> Admin {%
-                  endif %}
+                  <i class="fas fa-crown text-warning me-1"></i> Owner
+                  {% else %}
+                  <i class="fas fa-shield-alt text-info me-1"></i> Admin
+                  {% endif %}
                 </p>
               </div>
             </div>
@@ -69,16 +72,22 @@
         <i class="fas fa-inbox text-muted mb-4" style="font-size: 5rem"></i>
         <h3 class="mb-3">No Servers Found</h3>
         <p class="text-muted mb-4">
-          You don't have any servers with Supporter BOT yet.<br />
-          Add the bot to your server to get started!
+          You don't have any servers with Supporter BOT yet, or you need to refresh the list.<br />
+          Make sure you have:
         </p>
-        <a
-          href="{{ invite_url }}"
-          target="_blank"
-          class="btn btn-primary btn-lg px-5"
-        >
-          <i class="fab fa-discord me-2"></i> Add Bot to Server
-        </a>
+        <ul class="list-unstyled mb-4">
+          <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Added the bot to your server</li>
+          <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Administrator permissions in the server</li>
+          <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Clicked "Refresh Server List" above</li>
+        </ul>
+        <div class="d-flex gap-3 justify-content-center">
+          <a href="{{ invite_url }}" target="_blank" class="btn btn-primary btn-lg px-5">
+            <i class="fab fa-discord me-2"></i> Add Bot to Server
+          </a>
+          <a href="{{ url_for('refresh_servers') }}" class="btn btn-outline-primary btn-lg px-5">
+            <i class="fas fa-sync-alt me-2"></i> Refresh List
+          </a>
+        </div>
       </div>
     </div>
     {% endif %}
@@ -86,7 +95,7 @@
 </section>
 
 {% else %}
-<!-- ==================== LOGIN PAGE ==================== -->
+<!-- ==================== LOGIN PAGE (unchanged) ==================== -->
 <section class="dashboard-hero bg-gradient-primary text-white py-5">
   <div class="container text-center py-5">
     <div class="row justify-content-center">
@@ -105,15 +114,11 @@
 
 <section class="dashboard-features py-5">
   <div class="container py-5">
-    <!-- Dashboard Features -->
+    <!-- Dashboard Features (unchanged) -->
     <div class="row g-4 mb-5">
       <div class="col-md-4">
-        <div
-          class="feature-card p-4 bg-white rounded-4 shadow-sm h-100 text-center"
-        >
-          <div
-            class="feature-icon bg-primary bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
-          >
+        <div class="feature-card p-4 bg-white rounded-4 shadow-sm h-100 text-center">
+          <div class="feature-icon bg-primary bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block">
             <i class="fas fa-trophy text-primary fs-2"></i>
           </div>
           <h4 class="fw-bold mb-3">Leveling System</h4>
@@ -125,12 +130,8 @@
       </div>
 
       <div class="col-md-4">
-        <div
-          class="feature-card p-4 bg-white rounded-4 shadow-sm h-100 text-center"
-        >
-          <div
-            class="feature-icon bg-danger bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
-          >
+        <div class="feature-card p-4 bg-white rounded-4 shadow-sm h-100 text-center">
+          <div class="feature-icon bg-danger bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block">
             <i class="fab fa-youtube text-danger fs-2"></i>
           </div>
           <h4 class="fw-bold mb-3">YouTube Notifications</h4>
@@ -142,12 +143,8 @@
       </div>
 
       <div class="col-md-4">
-        <div
-          class="feature-card p-4 bg-white rounded-4 shadow-sm h-100 text-center"
-        >
-          <div
-            class="feature-icon bg-warning bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block"
-          >
+        <div class="feature-card p-4 bg-white rounded-4 shadow-sm h-100 text-center">
+          <div class="feature-icon bg-warning bg-opacity-10 rounded-circle p-3 mb-3 d-inline-block">
             <i class="fas fa-shield-alt text-warning fs-2"></i>
           </div>
           <h4 class="fw-bold mb-3">Channel Controls</h4>
@@ -159,7 +156,7 @@
       </div>
     </div>
 
-    <!-- Benefits -->
+    <!-- Benefits (unchanged) -->
     <div class="row g-4 mb-5">
       <div class="col-lg-6">
         <div class="info-card bg-white p-5 rounded-4 shadow-sm">
@@ -222,10 +219,7 @@
 
     <!-- Login Button -->
     <div class="text-center">
-      <a
-        href="{{ url_for('dashboard_login') }}"
-        class="btn btn-primary btn-lg px-5 shadow-lg"
-      >
+      <a href="{{ url_for('dashboard_login') }}" class="btn btn-primary btn-lg px-5 shadow-lg">
         <i class="fab fa-discord me-2"></i>
         Login with Discord
       </a>
@@ -235,7 +229,11 @@
     </div>
   </div>
 </section>
-{% endif %} {% endblock %} {% block extra_css %}
+{% endif %}
+
+{% endblock %}
+
+{% block extra_css %}
 <style>
   .server-card {
     transition: all 0.3s ease;
@@ -254,7 +252,7 @@
   }
 
   .empty-state {
-    max-width: 500px;
+    max-width: 600px;
     margin: 0 auto;
   }
 

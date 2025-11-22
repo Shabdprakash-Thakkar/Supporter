@@ -1,4 +1,4 @@
-// ==================== DASHBOARD JAVASCRIPT V2.2 ====================
+// REPLACE the ENTIRE contents of dashboard.js with this code
 
 document.addEventListener("DOMContentLoaded", function () {
   if (typeof GUILD_ID !== "undefined") {
@@ -13,31 +13,47 @@ document.addEventListener("DOMContentLoaded", function () {
 async function loadDashboardData() {
   showLoader("general-settings-loader", "general-settings-content");
   showLoader("time-channels-loader", "time-channels-content");
+  showLoader("youtube-loader", "youtube-configs-container");
 
   try {
-    const [config, discordData] = await Promise.all([
-      fetch(`/api/server/${GUILD_ID}/config`).then((res) => res.json()),
-      fetch(`/api/server/${GUILD_ID}/discord-data`).then((res) => res.json()),
+    const [configRes, discordDataRes] = await Promise.all([
+      fetch(`/api/server/${GUILD_ID}/config`),
+      fetch(`/api/server/${GUILD_ID}/discord-data`),
     ]);
 
-    if (config.error || discordData.error) {
-      throw new Error(config.error || discordData.error);
+    if (!configRes.ok) {
+      const errText = await configRes.text();
+      throw new Error(`Config API (${configRes.status}): ${errText}`);
+    }
+    if (!discordDataRes.ok) {
+      const errText = await discordDataRes.text();
+      throw new Error(`Discord Data API (${discordDataRes.status}): ${errText}`);
     }
 
-    // Populate all sections
-    populateGeneralSettings(config.guild_settings);
-    populateLevelingTab(config, discordData);
-    populateTimeChannels(config.time_channel_config, discordData.channels);
-    populateRewardModal(discordData.roles);
+    const config = await configRes.json();
+    const discordData = await discordDataRes.json();
 
-    // Initial load for the leaderboard
+    if (config.error) throw new Error(config.error);
+    if (discordData.error) throw new Error(discordData.error);
+
+    // Populate all sections
+    try { populateGeneralSettings(config.guild_settings); } catch (e) { console.error("Error in populateGeneralSettings:", e); }
+    try { populateLevelingTab(config, discordData); } catch (e) { console.error("Error in populateLevelingTab:", e); }
+    try { populateTimeChannels(config.time_channel_config, discordData.channels); } catch (e) { console.error("Error in populateTimeChannels:", e); }
+    try { populateRewardModal(discordData.roles); } catch (e) { console.error("Error in populateRewardModal:", e); }
+    try { populateYouTubeTab(config, discordData); } catch (e) { console.error("Error in populateYouTubeTab:", e); }
+
+    // Channel restrictions are now handled in a separate iframe/tab
+    // populateChannelRestrictions(discordData.channels, config.channel_restrictions);
+
     loadLeaderboard();
   } catch (error) {
     console.error("❌ Fatal error loading dashboard data:", error);
-    showToast("Error loading dashboard data. Please refresh.", "danger");
+    showToast(`Error loading dashboard data: ${error.message}`, "danger");
   } finally {
     hideLoader("general-settings-loader", "general-settings-content");
     hideLoader("time-channels-loader", "time-channels-content");
+    hideLoader("youtube-loader", "youtube-configs-container");
   }
 }
 
@@ -55,7 +71,7 @@ function populateLevelingTab(config, discordData) {
   const { level_rewards, level_notify_channel_id } = config;
   const { roles, channels } = discordData;
 
-  // Populate Rewards List
+  // Level Rewards List
   const rewardsContainer = document.getElementById("level-rewards-list");
   if (!level_rewards || level_rewards.length === 0) {
     rewardsContainer.innerHTML = `<div class="text-center text-muted py-4">No level rewards configured.</div>`;
@@ -65,27 +81,22 @@ function populateLevelingTab(config, discordData) {
       .map(
         (reward) => `
             <div class="reward-item p-3 mb-2 rounded-3 d-flex justify-content-between align-items-center">
-                <div><strong>Level ${
-                  reward.level
-                }</strong> &rarr; <span class="badge bg-primary">${
-          roleMap.get(reward.role_id) || reward.role_name || "Unknown Role"
-        }</span></div>
+                <div><strong>Level ${reward.level
+          }</strong> &rarr; <span class="badge bg-primary">${roleMap.get(reward.role_id) || "Unknown Role"
+          }</span></div>
                 <div>
-                    <button class="btn btn-sm btn-outline-secondary me-2 edit-reward-btn" data-level="${
-                      reward.level
-                    }" data-role-id="${
-          reward.role_id
-        }" title="Edit"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="btn btn-sm btn-outline-danger delete-reward-btn" data-level="${
-                      reward.level
-                    }" title="Delete"><i class="fas fa-trash"></i></button>
+                    <button class="btn btn-sm btn-outline-secondary me-2 edit-reward-btn" data-level="${reward.level
+          }" data-role-id="${reward.role_id
+          }" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                    <button class="btn btn-sm btn-outline-danger delete-reward-btn" data-level="${reward.level
+          }" title="Delete"><i class="fas fa-trash"></i></button>
                 </div>
             </div>`
       )
       .join("");
   }
 
-  // Populate Notification Channel Dropdown
+  // Notification Channel Select
   const notifySelect = document.getElementById("level-notify-channel-select");
   const textChannels = channels.filter((c) => c.type === 0);
   notifySelect.innerHTML =
@@ -93,12 +104,16 @@ function populateLevelingTab(config, discordData) {
     textChannels
       .map(
         (c) =>
-          `<option value="${c.id}" ${
-            level_notify_channel_id === c.id ? "selected" : ""
+          `<option value="${c.id}" ${level_notify_channel_id === c.id ? "selected" : ""
           }>#${c.name}</option>`
       )
       .join("");
+
+  // Show notification channel content and hide loader
   hideLoader("level-notify-channel-loader", "level-notify-channel-content");
+
+  // Load auto-reset configuration
+  loadAutoResetConfig();
 }
 
 function populateTimeChannels(config, allChannels) {
@@ -127,23 +142,344 @@ function populateRewardModal(roles) {
     roles.map((r) => `<option value="${r.id}">${r.name}</option>`).join("");
 }
 
-// ==================== EVENT LISTENERS ====================
+// ==================== AUTO RESET CONFIGURATION ====================
+
+async function loadAutoResetConfig() {
+  const loader = document.getElementById("auto-reset-loader");
+  const content = document.getElementById("auto-reset-content");
+  const statusCard = document.getElementById("auto-reset-status-card");
+
+  if (loader) loader.style.display = "block";
+  if (content) content.style.display = "none";
+
+  try {
+    const response = await fetch(`/api/server/${GUILD_ID}/auto-reset`);
+    const data = await response.json();
+
+    if (!response.ok)
+      throw new Error(data.error || "Failed to load auto-reset config");
+
+    if (content) content.style.display = "block";
+    if (loader) loader.style.display = "none";
+
+    if (data.enabled && statusCard) {
+      statusCard.classList.remove("d-none");
+      statusCard.classList.add("alert-success");
+      statusCard.classList.remove("alert-secondary");
+
+      const titleEl = document.getElementById("auto-reset-status-title");
+      const detailsEl = document.getElementById("auto-reset-status-details");
+      const disableBtn = document.getElementById("disable-auto-reset-btn");
+
+      if (titleEl)
+        titleEl.textContent = `✅ Auto-Reset Active (Every ${data.days} day${data.days > 1 ? "s" : ""
+          })`;
+
+      if (detailsEl) {
+        const nextResetDate = new Date(data.next_reset);
+        detailsEl.textContent = `Next reset in ${data.days_remaining} day${data.days_remaining !== 1 ? "s" : ""
+          } and ${data.hours_remaining} hour${data.hours_remaining !== 1 ? "s" : ""
+          } (${nextResetDate.toLocaleDateString()})`;
+      }
+
+      if (disableBtn) disableBtn.style.display = "inline-block";
+    } else if (statusCard) {
+      statusCard.classList.remove("d-none");
+      statusCard.classList.add("alert-secondary");
+      statusCard.classList.remove("alert-success");
+
+      const titleEl = document.getElementById("auto-reset-status-title");
+      const detailsEl = document.getElementById("auto-reset-status-details");
+      const disableBtn = document.getElementById("disable-auto-reset-btn");
+
+      if (titleEl) titleEl.textContent = "⚠️ Auto-Reset Not Configured";
+      if (detailsEl)
+        detailsEl.textContent = "Set up automatic XP resets below.";
+      if (disableBtn) disableBtn.style.display = "none";
+    }
+  } catch (error) {
+    console.error("Error loading auto-reset config:", error);
+    if (content) content.style.display = "block";
+    if (loader) loader.style.display = "none";
+
+    if (statusCard) {
+      statusCard.classList.remove("d-none");
+      statusCard.classList.add("alert-secondary");
+      const titleEl = document.getElementById("auto-reset-status-title");
+      const detailsEl = document.getElementById("auto-reset-status-details");
+      if (titleEl) titleEl.textContent = "⚠️ Auto-Reset Not Configured";
+      if (detailsEl)
+        detailsEl.textContent = "Set up automatic XP resets below.";
+    }
+  }
+}
+
+async function enableAutoReset() {
+  const daysInput = document.getElementById("auto-reset-days");
+  const days = parseInt(daysInput.value);
+
+  if (!days || days < 1 || days > 365) {
+    showToast("Please enter a valid number of days (1-365)", "danger");
+    return;
+  }
+
+  const btn = document.getElementById("enable-auto-reset-btn");
+  btn.disabled = true;
+
+  try {
+    const response = await fetch(`/api/server/${GUILD_ID}/auto-reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ days }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+
+    showToast(result.message, "success");
+    daysInput.value = "";
+    loadAutoResetConfig();
+  } catch (error) {
+    showToast(`Error: ${error.message}`, "danger");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function disableAutoReset() {
+  if (!confirm("Are you sure you want to disable automatic XP resets?")) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/server/${GUILD_ID}/auto-reset`, {
+      method: "DELETE",
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+
+    showToast(result.message, "success");
+    loadAutoResetConfig();
+  } catch (error) {
+    showToast(`Error: ${error.message}`, "danger");
+  }
+}
+
+async function manualResetXP() {
+  const btn = document.getElementById("confirm-manual-reset-btn");
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Resetting...';
+
+  try {
+    const response = await fetch(`/api/server/${GUILD_ID}/reset-xp`, {
+      method: "POST",
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+
+    showToast(result.message, "success");
+
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(
+      document.getElementById("confirmResetModal")
+    );
+    if (modal) modal.hide();
+
+    // Reload leaderboard to show reset
+    loadLeaderboard();
+  } catch (error) {
+    showToast(`Error: ${error.message}`, "danger");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check me-2"></i>Yes, Reset Everything';
+  }
+}
+
+// ==================== YOUTUBE NOTIFICATION FUNCTIONS ====================
+
+function populateYouTubeTab(config, discordData) {
+  const container = document.getElementById("youtube-configs-container");
+  const loader = document.getElementById("youtube-loader");
+
+  const channelSelect = document.getElementById("yt-discord-channel-select");
+  const roleSelect = document.getElementById("yt-mention-role-select");
+
+  const textChannels = discordData.channels.filter((c) => c.type === 0);
+  channelSelect.innerHTML =
+    '<option selected disabled value="">-- Select a channel --</option>' +
+    textChannels
+      .map((c) => `<option value="${c.id}">#${c.name}</option>`)
+      .join("");
+  roleSelect.innerHTML =
+    '<option value="">-- No Role Mention --</option>' +
+    discordData.roles
+      .map((r) => `<option value="${r.id}">@${r.name}</option>`)
+      .join("");
+
+  const ytConfigs = config.youtube_notification_config || [];
+
+  // Hide loader first
+  if (loader) loader.style.display = "none";
+
+  // Show container and populate it
+  if (container) {
+    container.style.display = "block";
+    container.classList.remove("d-none");
+
+    if (ytConfigs.length === 0) {
+      container.innerHTML = `
+        <div class="text-center text-muted py-5">
+          <i class="fab fa-youtube fa-3x mb-3 opacity-50"></i>
+          <p class="mb-0">No YouTube notifications configured.</p>
+          <small>Click "Add New Notification" to get started.</small>
+        </div>`;
+    } else {
+      container.innerHTML = ytConfigs
+        .map((ytConfig) => {
+          const channelName =
+            discordData.channels.find(
+              (c) => c.id === ytConfig.target_channel_id
+            )?.name || "Unknown Channel";
+          const roleName = ytConfig.mention_role_id
+            ? discordData.roles.find((r) => r.id === ytConfig.mention_role_id)
+              ?.name || "Unknown Role"
+            : "here";
+          return `
+            <div class="card mb-3 shadow-sm">
+              <div class="card-body d-flex justify-content-between align-items-center flex-wrap">
+                <div class="mb-2 mb-md-0">
+                  <h5 class="card-title mb-1">
+                    <i class="fab fa-youtube text-danger me-2"></i>${ytConfig.yt_channel_name
+            }
+                  </h5>
+                  <p class="card-text small text-muted mb-0">
+                    <i class="fas fa-hashtag me-1"></i>${channelName} 
+                    <span class="mx-2">•</span>
+                    <i class="fas fa-at me-1"></i>${roleName}
+                  </p>
+                </div>
+                <div class="d-flex gap-2 mt-2 mt-md-0">
+                  <button class="btn btn-sm btn-outline-primary edit-yt-btn" data-config='${JSON.stringify(
+              ytConfig
+            ).replace(/'/g, "&#39;")}'>
+                    <i class="fas fa-pencil-alt me-1"></i> Edit
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger delete-yt-btn" 
+                    data-yt-channel-id="${ytConfig.yt_channel_id}" 
+                    data-yt-channel-name="${ytConfig.yt_channel_name}">
+                    <i class="fas fa-trash me-1"></i> Delete
+                  </button>
+                </div>
+              </div>
+            </div>`;
+        })
+        .join("");
+    }
+  }
+}
+
+async function saveYtNotification(event) {
+  event.preventDefault();
+  const btn = document.getElementById("save-yt-notification-btn");
+  btn.disabled = true;
+
+  const channelInfo = document.getElementById(
+    "yt-channel-finder-status"
+  ).dataset;
+  const data = {
+    yt_channel_id: channelInfo.channelId,
+    yt_channel_name: channelInfo.channelName,
+    target_channel_id: document.getElementById("yt-discord-channel-select")
+      .value,
+    mention_role_id: document.getElementById("yt-mention-role-select").value,
+    custom_message: document.getElementById("yt-custom-message").value,
+  };
+
+  if (!data.yt_channel_id) {
+    showToast("Please find and verify a YouTube channel first.", "danger");
+    btn.disabled = false;
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/server/${GUILD_ID}/youtube-configs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+
+    showToast("YouTube notification saved!", "success");
+    bootstrap.Modal.getInstance(
+      document.getElementById("addYtNotificationModal")
+    ).hide();
+    loadDashboardData();
+  } catch (error) {
+    showToast(`Error: ${error.message}`, "danger");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function deleteYtNotification(ytChannelId, ytChannelName) {
+  if (
+    !confirm(
+      `Are you sure you want to delete notifications for "${ytChannelName}"?`
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `/api/server/${GUILD_ID}/youtube-configs?yt_channel_id=${ytChannelId}`,
+      {
+        method: "DELETE",
+      }
+    );
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+
+    showToast("YouTube notification deleted!", "success");
+    loadDashboardData();
+  } catch (error) {
+    showToast(`Error: ${error.message}`, "danger");
+  }
+}
+
+// ==================== EVENT LISTENERS (UNIFIED) ====================
 
 function initializeEventListeners() {
+  // General Settings
   document
     .getElementById("general-settings-form")
     .addEventListener("submit", saveGeneralSettings);
+
+  // Time Channels
   document
     .getElementById("time-channels-form")
     .addEventListener("submit", saveTimeChannels);
+
+  // Leveling Tab
   document
     .getElementById("level-reward-form")
     .addEventListener("submit", saveLevelReward);
   document
     .getElementById("save-notify-channel-btn")
     .addEventListener("click", saveLevelNotifyChannel);
+  document
+    .getElementById("enable-auto-reset-btn")
+    .addEventListener("click", enableAutoReset);
+  document
+    .getElementById("disable-auto-reset-btn")
+    .addEventListener("click", disableAutoReset);
+  document
+    .getElementById("confirm-manual-reset-btn")
+    .addEventListener("click", manualResetXP);
 
-  // Leaderboard search and limit listeners
   let debounceTimer;
   document
     .getElementById("leaderboard-search")
@@ -154,11 +490,18 @@ function initializeEventListeners() {
   document
     .getElementById("leaderboard-limit")
     .addEventListener("change", loadLeaderboard);
+  document
+    .getElementById("auto-reset-days")
+    .addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        enableAutoReset();
+      }
+    });
 
-  // Event delegation for reward buttons
   document
     .getElementById("level-rewards-list")
-    .addEventListener("click", function (e) {
+    .addEventListener("click", (e) => {
       const editBtn = e.target.closest(".edit-reward-btn");
       if (editBtn) {
         document.getElementById("reward-level").value = editBtn.dataset.level;
@@ -168,7 +511,6 @@ function initializeEventListeners() {
           document.getElementById("addLevelRewardModal")
         ).show();
       }
-
       const deleteBtn = e.target.closest(".delete-reward-btn");
       if (
         deleteBtn &&
@@ -178,15 +520,147 @@ function initializeEventListeners() {
       }
     });
 
-  // Reset modal form when closed
   document
     .getElementById("addLevelRewardModal")
     .addEventListener("hidden.bs.modal", () =>
       document.getElementById("level-reward-form").reset()
     );
+
+  // YouTube Tab
+  document
+    .getElementById("add-yt-notification-btn")
+    .addEventListener("click", () => {
+      const form = document.getElementById("yt-notification-form");
+      form.reset();
+      document.getElementById("yt-custom-message").value =
+        "🔔 {@role} **{channel_name}** has uploaded a new video!\n\n**{video_title}**\n{video_url}";
+      const statusEl = document.getElementById("yt-channel-finder-status");
+      statusEl.innerHTML = 'Enter a @handle or channel URL and click "Find".';
+      statusEl.className = "form-text";
+      statusEl.dataset.channelId = "";
+      statusEl.dataset.channelName = "";
+      document.getElementById("yt-discord-channel-select").value = "";
+      document.getElementById("yt-mention-role-select").value = "";
+      new bootstrap.Modal(
+        document.getElementById("addYtNotificationModal")
+      ).show();
+    });
+
+  document
+    .getElementById("yt-notification-form")
+    .addEventListener("submit", saveYtNotification);
+
+  document
+    .getElementById("youtube-configs-container")
+    .addEventListener("click", (e) => {
+      const editBtn = e.target.closest(".edit-yt-btn");
+      if (editBtn) {
+        const config = JSON.parse(editBtn.dataset.config);
+        document.getElementById("yt-channel-input").value =
+          config.yt_channel_name;
+        const statusEl = document.getElementById("yt-channel-finder-status");
+        statusEl.innerHTML = `✅ Found: <strong>${config.yt_channel_name}</strong> (ID: ${config.yt_channel_id})`;
+        statusEl.dataset.channelId = config.yt_channel_id;
+        statusEl.dataset.channelName = config.yt_channel_name;
+        document.getElementById("yt-discord-channel-select").value =
+          config.target_channel_id;
+        document.getElementById("yt-mention-role-select").value =
+          config.mention_role_id || "";
+        document.getElementById("yt-custom-message").value =
+          config.custom_message;
+        new bootstrap.Modal(
+          document.getElementById("addYtNotificationModal")
+        ).show();
+      }
+      const deleteBtn = e.target.closest(".delete-yt-btn");
+      if (deleteBtn) {
+        deleteYtNotification(
+          deleteBtn.dataset.ytChannelId,
+          deleteBtn.dataset.ytChannelName
+        );
+      }
+    });
+
+  document
+    .getElementById("find-yt-channel-btn")
+    .addEventListener("click", async () => {
+      const btn = document.getElementById("find-yt-channel-btn");
+      const input = document.getElementById("yt-channel-input");
+      const statusEl = document.getElementById("yt-channel-finder-status");
+      const query = input.value;
+
+      if (!query) {
+        statusEl.textContent = "Please enter a channel @handle or URL.";
+        statusEl.className = "form-text text-danger";
+        return;
+      }
+
+      const originalBtnHTML = btn.innerHTML;
+      btn.innerHTML =
+        '<span class="spinner-border spinner-border-sm"></span> Finding...';
+      btn.disabled = true;
+      statusEl.textContent = "Searching...";
+      statusEl.className = "form-text text-muted";
+      statusEl.dataset.channelId = "";
+      statusEl.dataset.channelName = "";
+
+      try {
+        const response = await fetch(
+          `/api/youtube/find-channel?query=${encodeURIComponent(query)}`
+        );
+        const data = await response.json();
+        if (!response.ok)
+          throw new Error(data.error || "Failed to find channel.");
+
+        statusEl.innerHTML = `✅ Found: <strong>${data.channel_name}</strong> (ID: ${data.channel_id})`;
+        statusEl.className = "form-text text-success";
+        statusEl.dataset.channelId = data.channel_id;
+        statusEl.dataset.channelName = data.channel_name;
+        input.value = data.channel_name;
+      } catch (error) {
+        statusEl.textContent = `❌ Error: ${error.message}`;
+        statusEl.className = "form-text text-danger";
+      } finally {
+        btn.innerHTML = originalBtnHTML;
+        btn.disabled = false;
+      }
+    });
+
+  // Main dashboard refresh button
+  const refreshBtn = document.getElementById("refresh-dashboard-btn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", function () {
+      showToast("Refreshing all server data...", "info");
+
+      const icon = refreshBtn.querySelector("i");
+      icon.classList.add("fa-spin"); // Add spin animation
+      refreshBtn.disabled = true;
+
+      loadDashboardData().finally(() => {
+        // Remove spin animation after a short delay
+        setTimeout(() => {
+          icon.classList.remove("fa-spin");
+          refreshBtn.disabled = false;
+        }, 1000);
+      });
+    });
+  }
+
+  // Channel Restrictions
+  const restrictionsContainer = document.getElementById(
+    "channel-restrictions-container"
+  );
+  if (restrictionsContainer) {
+    restrictionsContainer.addEventListener("change", (e) => {
+      if (e.target.classList.contains("restriction-toggle")) {
+        const channelId = e.target.closest(".card").dataset.channelId;
+        saveChannelRestriction(channelId);
+      }
+    });
+  }
 }
 
-// ==================== API FUNCTIONS ====================
+// ==================== OTHER API FUNCTIONS ====================
 
 async function loadLeaderboard() {
   const limit = document.getElementById("leaderboard-limit").value;
@@ -201,13 +675,11 @@ async function loadLeaderboard() {
     );
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
-
     if (data.length === 0) {
       body.innerHTML =
         '<tr><td colspan="4" class="text-center text-muted py-4">No users found.</td></tr>';
       return;
     }
-
     body.innerHTML = data
       .map(
         (user, index) => `
@@ -229,9 +701,8 @@ async function loadLeaderboard() {
 async function saveGeneralSettings(event) {
   event.preventDefault();
   const btn = document.getElementById("save-general-settings-btn");
-  const originalText = btn.innerHTML;
-  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
   btn.disabled = true;
+  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
   const data = {
     xp_per_message: document.getElementById("xp_per_message").value,
     xp_per_image: document.getElementById("xp_per_image").value,
@@ -251,17 +722,16 @@ async function saveGeneralSettings(event) {
   } catch (error) {
     showToast(`Error: ${error.message}`, "danger");
   } finally {
-    btn.innerHTML = originalText;
     btn.disabled = false;
+    btn.innerHTML = `<i class="fas fa-save me-2"></i>Save Settings`;
   }
 }
 
 async function saveTimeChannels(event) {
   event.preventDefault();
   const btn = document.getElementById("save-time-channels-btn");
-  const originalText = btn.innerHTML;
-  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
   btn.disabled = true;
+  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
   const data = {
     is_enabled: document.getElementById("time-channels-enabled").checked,
     date_channel_id: document.getElementById("date-channel-select").value,
@@ -280,8 +750,8 @@ async function saveTimeChannels(event) {
   } catch (error) {
     showToast(`Error: ${error.message}`, "danger");
   } finally {
-    btn.innerHTML = originalText;
     btn.disabled = false;
+    btn.innerHTML = `<i class="fas fa-save me-2"></i>Save Changes`;
   }
 }
 
@@ -290,8 +760,7 @@ async function saveLevelNotifyChannel() {
   btn.disabled = true;
   const select = document.getElementById("level-notify-channel-select");
   const channelId = select.value;
-  const channelName = select.selectedOptions[0].text;
-
+  const channelName = select.options[select.selectedIndex].text;
   const data = channelId
     ? { channel_id: channelId, channel_name: channelName }
     : { channel_id: null, channel_name: null };
@@ -320,8 +789,9 @@ async function saveLevelReward(event) {
   const form = event.target;
   const level = form.querySelector("#reward-level").value;
   const roleId = form.querySelector("#reward-role-select").value;
-  const roleName = form.querySelector("#reward-role-select").selectedOptions[0]
-    .text;
+  const roleName = form.querySelector("#reward-role-select").options[
+    form.querySelector("#reward-role-select").selectedIndex
+  ].text;
   try {
     const response = await fetch(`/api/server/${GUILD_ID}/level-reward`, {
       method: "POST",
@@ -330,7 +800,6 @@ async function saveLevelReward(event) {
         level,
         role_id: roleId,
         role_name: roleName,
-        guild_name: "{{server.name}}",
       }),
     });
     const result = await response.json();
@@ -363,13 +832,25 @@ async function deleteLevelReward(level) {
 // ==================== UTILITY FUNCTIONS ====================
 
 function showLoader(loaderId, contentId) {
-  document.getElementById(loaderId).classList.remove("d-none");
-  document.getElementById(contentId).classList.add("d-none");
+  const loader = document.getElementById(loaderId);
+  const content = document.getElementById(contentId);
+  if (loader) loader.style.display = "block";
+  if (content) content.style.display = "none";
+  if (content) content.classList.add("d-none");
 }
 
 function hideLoader(loaderId, contentId) {
-  document.getElementById(loaderId).classList.add("d-none");
-  document.getElementById(contentId).classList.remove("d-none");
+  const loader = document.getElementById(loaderId);
+  const content = document.getElementById(contentId);
+
+  if (loader) {
+    loader.style.display = "none";
+  }
+
+  if (content) {
+    content.style.display = "block";
+    content.classList.remove("d-none");
+  }
 }
 
 function showToast(message, type = "success") {

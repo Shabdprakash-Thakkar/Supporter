@@ -1,13 +1,333 @@
-# Environment variables - VERY IMPORTANT
+# 🔒 GitHub Security & Privacy Guide for Supporter BOT
+
+## 📋 Pre-Publication Checklist
+
+Before pushing to GitHub, follow this guide to protect your privacy and credentials.
+
+---
+
+## 1️⃣ Files to NEVER Commit (Add to .gitignore)
+
+Create a `.gitignore` file in your root directory:
+
+```gitignore
+# Environment & Secrets
 Data_Files/.env
-Data_Files/Guide.txt
 Data_Files/SQL.txt
+.agent
+.env
+*.env
 
-# Python virtual environment
-venv/
-*.pyc
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv/
 
-# IDE folders
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Session files
+flask_session/
+*.session
+
+# Compiled files
+*.pyc
+*.pyo
+```
+
+---
+
+## 2️⃣ Create Template Environment File
+
+Create `Data_Files/.env.example` (this IS safe to commit):
+
+```env
+# ===========================================
+# SUPPORTER BOT - ENVIRONMENT CONFIGURATION
+# ===========================================
+# Copy this file to .env and fill in your values
+# NEVER commit the actual .env file!
+
+# ============ DISCORD BOT ============
+DISCORD_TOKEN=your_discord_bot_token_here
+DISCORD_CLIENT_ID=your_bot_client_id_here
+
+# ============ DATABASE ============
+# Format: postgresql://user:password@host:port/database
+# For Supabase, use port 6543 (Transaction mode)
+DATABASE_URL=postgresql://postgres:your_password@db.xxxxx.supabase.co:6543/postgres
+
+# ============ DISCORD OAUTH2 (Dashboard) ============
+DISCORD_OAUTH2_CLIENT_ID=your_oauth2_client_id
+DISCORD_OAUTH2_CLIENT_SECRET=your_oauth2_client_secret
+DISCORD_OAUTH2_REDIRECT_URI=https://yourdomain.com/dashboard/callback
+
+# ============ FLASK CONFIGURATION ============
+FLASK_SECRET_KEY=generate_a_random_32_character_string_here
+FLASK_HOST=0.0.0.0
+FLASK_PORT=5000
+FLASK_DEBUG=false
+
+# ============ SERVER CONFIGURATION ============
+SERVER_DOMAIN=https://yourdomain.com
+SERVER_IP=0.0.0.0
+OAUTHLIB_INSECURE_TRANSPORT=1
+
+# ============ OPTIONAL: YOUTUBE API ============
+YOUTUBE_API_KEY=your_youtube_api_key_here
+```
+
+---
+
+## 3️⃣ Files to Review & Modify
+
+### 📁 `Flask_Frontend/app.py`
+
+**Lines 63-75 - Remove hardcoded CORS origins:**
+
+```python
+# BEFORE (INSECURE - contains your actual domain/IP):
+ALLOWED_ORIGINS = [
+    "https://shabdprakash-thakkar.online",
+    "http://194.164.56.164:9528",
+    # ... actual values
+]
+
+# AFTER (SECURE - uses environment variables):
+ALLOWED_ORIGINS = [
+    SERVER_DOMAIN,
+    f"http://{SERVER_IP}:{SERVER_PORT}",
+    f"https://{SERVER_IP}:{SERVER_PORT}",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+]
+```
+
+**Line ~47 - Already uses env vars, but verify no hardcoded values**
+
+---
+
+### 📁 `run_production.py`
+
+**Lines 19-21 - Remove hardcoded values:**
+
+```python
+# BEFORE:
+SERVER_IP = os.getenv("SERVER_IP", "194.164.56.164")
+SERVER_PORT = os.getenv("FLASK_PORT", "9528")
+SERVER_DOMAIN = os.getenv("SERVER_DOMAIN", "https://shabdprakash-thakkar.online")
+
+# AFTER:
+SERVER_IP = os.getenv("SERVER_IP", "0.0.0.0")
+SERVER_PORT = os.getenv("FLASK_PORT", "5000")
+SERVER_DOMAIN = os.getenv("SERVER_DOMAIN", "http://localhost:5000")
+```
+
+---
+
+### 📁 `Flask_Frontend/templates/contact.html`
+
+**Line ~180 - Remove personal email:**
+
+```html
+<!-- BEFORE: -->
+<a href="mailto:shabdprakash95@gmail.com">
+    shabdprakash95@gmail.com
+</a>
+
+<!-- AFTER (or remove entirely): -->
+<a href="mailto:your-email@example.com">
+    your-email@example.com
+</a>
+```
+
+**Lines ~210-230 - Review social links:**
+
+```html
+<!-- Either remove or make generic: -->
+<a href="https://discord.gg/YOUR_INVITE" target="_blank">
+<a href="https://github.com/YOUR_USERNAME" target="_blank">
+<a href="https://www.instagram.com/YOUR_HANDLE/" target="_blank">
+```
+
+---
+
+### 📁 `Flask_Frontend/templates/base.html`
+
+**Lines ~155-165 - Footer social links:**
+
+```html
+<!-- Review and update or remove personal links -->
+<a href="https://discord.gg/NbNNU24HjF" ...>  <!-- Your Discord -->
+<a href="https://github.com/Shabdprakash-Thakkar" ...>  <!-- Your GitHub -->
+<a href="https://www.instagram.com/study_time_95/" ...>  <!-- Your Instagram -->
+```
+
+---
+
+### 📁 `Data_Files/SQL.txt`
+
+**Review for any hardcoded data:**
+- Remove any INSERT statements with real data
+- Remove any test user IDs or guild IDs
+- Keep only CREATE TABLE statements
+
+---
+
+## 4️⃣ Files That Are SAFE to Commit
+
+These files don't contain sensitive data:
+
+- ✅ All `.py` files (after review)
+- ✅ All `.html` templates (after removing personal info)
+- ✅ All `.css` files
+- ✅ All `.js` files
+- ✅ `requirements.txt`
+- ✅ `README.md`
+- ✅ `.env.example` (template only!)
+- ✅ `SQL.txt` (schema only, no data)
+- ✅ Static images (logos, icons)
+
+---
+
+## 5️⃣ Search for Sensitive Data
+
+Run these searches in your project to find potential leaks:
+
+### Search Commands (Terminal):
+
+```bash
+# Search for potential tokens/keys
+grep -r "discord.gg" --include="*.py" --include="*.html"
+grep -r "token" --include="*.py" --include="*.env"
+grep -r "password" --include="*.py"
+grep -r "secret" --include="*.py"
+grep -r "@gmail.com" --include="*.py" --include="*.html"
+grep -r "supabase" --include="*.py"
+
+# Search for IP addresses (pattern: xxx.xxx.xxx.xxx)
+grep -rE "\b[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b" --include="*.py"
+
+# Search for hardcoded domains
+grep -r "shabdprakash" --include="*.py" --include="*.html" --include="*.js"
+```
+
+### Things to Look For:
+
+| Pattern | Risk Level | Action |
+|---------|------------|--------|
+| `DISCORD_TOKEN` value | 🔴 CRITICAL | Never commit |
+| `DATABASE_URL` with password | 🔴 CRITICAL | Never commit |
+| `SECRET_KEY` value | 🔴 CRITICAL | Never commit |
+| Personal email addresses | 🟡 MEDIUM | Remove or replace |
+| Personal domain names | 🟡 MEDIUM | Make configurable |
+| Server IP addresses | 🟡 MEDIUM | Use env vars |
+| Discord invite links | 🟢 LOW | Optional to keep |
+| GitHub/social usernames | 🟢 LOW | Optional to keep |
+
+---
+
+## 6️⃣ Recommended File Changes Summary
+
+| File | Line(s) | Change Required |
+|------|---------|-----------------|
+| `app.py` | 63-75 | Remove hardcoded CORS origins |
+| `run_production.py` | 19-21 | Change default values to localhost |
+| `contact.html` | ~180 | Remove/replace personal email |
+| `contact.html` | ~210-230 | Review social links |
+| `base.html` | ~155-165 | Review footer social links |
+| `SQL.txt` | Various | Remove any test data |
+| `.env` | ALL | **NEVER COMMIT** |
+
+---
+
+## 7️⃣ Before First Push - Final Checklist
+
+```
+□ Created .gitignore file
+□ Created .env.example template
+□ Removed .env from tracking (if previously committed)
+□ Searched for and removed all tokens/passwords
+□ Replaced hardcoded IPs with environment variables
+□ Reviewed all HTML templates for personal info
+□ Removed any test data from SQL.txt
+□ Updated README with generic instructions
+□ Tested that app still works with .env.example values
+```
+
+---
+
+## 8️⃣ If You Already Committed Secrets
+
+If you accidentally committed sensitive data:
+
+### Option 1: Regenerate Credentials (RECOMMENDED)
+1. **Discord Token**: Regenerate in Developer Portal
+2. **Database Password**: Change in Supabase dashboard
+3. **OAuth Secret**: Regenerate in Developer Portal
+4. **Flask Secret**: Generate new random string
+
+### Option 2: Remove from Git History
+```bash
+# Remove file from all history (DANGEROUS - rewrites history)
+git filter-branch --force --index-filter \
+  'git rm --cached --ignore-unmatch Data_Files/.env' \
+  --prune-empty --tag-name-filter cat -- --all
+
+# Force push (requires --force, will affect collaborators)
+git push origin --force --all
+```
+
+### Option 3: Use BFG Repo-Cleaner
+```bash
+# Faster alternative to filter-branch
+bfg --delete-files .env
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+```
+
+---
+
+## 9️⃣ GitHub Repository Settings
+
+After pushing, configure these settings:
+
+1. **Settings → Branches**: Protect main branch
+2. **Settings → Secrets**: Add secrets for GitHub Actions (if using)
+3. **Settings → Security**: Enable secret scanning
+4. **Add License**: MIT or your preferred license
+5. **Add Topics**: `discord-bot`, `python`, `flask`, `postgresql`
+
+---
+
+## 🎯 Quick Reference: What Goes Where
+
+| Information | .env (Private) | .env.example (Public) | Code (Public) |
+|-------------|----------------|----------------------|---------------|
+| Discord Token | ✅ Actual value | ❌ Placeholder | ❌ Never |
+| Database URL | ✅ Actual value | ❌ Placeholder | ❌ Never |
+| Secret Keys | ✅ Actual value | ❌ Placeholder | ❌ Never |
+| Port Numbers | ✅ Actual value | ✅ Default value | ✅ Via os.getenv() |
+| Domain Names | ✅ Actual value | ❌ Placeholder | ✅ Via os.getenv() |
+| Social Links | N/A | N/A | ⚠️ Your choice |

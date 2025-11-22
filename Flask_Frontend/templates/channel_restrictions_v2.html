@@ -1,0 +1,242 @@
+{% extends "iframe_base.html" %}
+{% block title %}Channel Restrictions{% endblock %}
+
+{% block content %}
+<section class="channel-restrictions-v2-section">
+  <div class="container-fluid py-2">
+    <div class="config-card bg-white p-4 rounded-4 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h4 class="fw-bold mb-1">
+            <i class="fas fa-shield-alt text-primary me-2"></i>Channel Restrictions V2
+          </h4>
+          <p class="text-muted mb-0 small">Configure granular message restrictions with custom content type filtering
+          </p>
+        </div>
+        <button class="btn btn-primary" id="addRestrictionBtn">
+          <i class="fas fa-plus me-2"></i>Add Restriction
+        </button>
+      </div>
+
+      <!-- Info Alert -->
+      <div class="alert alert-info d-flex align-items-start mb-4">
+        <i class="fas fa-info-circle me-2 mt-1"></i>
+        <div>
+          <strong>New Granular Control:</strong>
+          <ul class="mb-0 mt-2 small">
+            <li><strong>Legacy Mode:</strong> Use preset restriction types (Block Invites, Block All Links, Media Only,
+              Text Only)</li>
+            <li><strong>Granular Mode:</strong> Create custom combinations by selecting specific content types to allow
+              or block</li>
+            <li>Examples: Allow text + links but block Discord invites, or allow only images and block everything else
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div id="loadingOverlay" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50"
+        style="z-index: 9998;">
+        <div class="position-absolute top-50 start-50 translate-middle text-center">
+          <div class="spinner-border text-light" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="text-light mt-3">Processing...</p>
+        </div>
+      </div>
+
+      <!-- Restrictions Table -->
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 20%">Channel</th>
+              <th style="width: 25%">Allowed Content</th>
+              <th style="width: 25%">Blocked Content</th>
+              <th style="width: 15%">Redirect To</th>
+              <th style="width: 15%" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="restrictionsTableBody">
+            <!-- Dynamic rows will be inserted here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Add/Edit Restriction Modal -->
+<div class="modal fade" id="restrictionModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-shield-alt text-primary me-2"></i>
+          <span id="modalTitle">Add Channel Restriction</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="restrictionForm">
+        <div class="modal-body">
+          <!-- Channel Selection -->
+          <div class="mb-4">
+            <label for="channelSelect" class="form-label fw-semibold">
+              1. Select Channel <span class="text-danger">*</span>
+            </label>
+            <select class="form-select form-select-lg" id="channelSelect" required>
+              <option value="">-- Choose a text channel --</option>
+            </select>
+            <div class="form-text">Only text channels are shown</div>
+          </div>
+
+          <!-- Mode Selection -->
+          <div class="mb-4">
+            <label for="restrictionMode" class="form-label fw-semibold">
+              2. Restriction Mode <span class="text-danger">*</span>
+            </label>
+            <select class="form-select form-select-lg" id="restrictionMode">
+              <option value="granular">Granular Control (Custom combinations)</option>
+              <option value="legacy">Legacy Presets (Quick setup)</option>
+            </select>
+            <div class="form-text">Choose granular for custom combinations or legacy for quick presets</div>
+          </div>
+
+          <!-- Legacy Mode Section -->
+          <div id="legacyModeSection" style="display: none;">
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                3. Choose Preset Type <span class="text-danger">*</span>
+              </label>
+              <select class="form-select form-select-lg" id="legacyTypeSelect">
+                <option value="block_invites">Block Discord Invites</option>
+                <option value="block_all_links">Block All Links</option>
+                <option value="media_only">Media Only</option>
+                <option value="text_only">Text Only</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Granular Mode Section -->
+          <div id="granularModeSection">
+            <div class="row">
+              <div class="col-md-6 mb-4">
+                <label class="form-label fw-semibold text-success">
+                  <i class="fas fa-check-circle me-2"></i>3. Allowed Content Types
+                </label>
+                <div class="border rounded p-3 bg-light" id="allowedContentTypes">
+                  <!-- Checkboxes will be inserted here by JavaScript -->
+                </div>
+                <div class="form-text">Select content types that ARE allowed in this channel</div>
+              </div>
+
+              <div class="col-md-6 mb-4">
+                <label class="form-label fw-semibold text-danger">
+                  <i class="fas fa-ban me-2"></i>3. Blocked Content Types
+                </label>
+                <div class="border rounded p-3 bg-light" id="blockedContentTypes">
+                  <!-- Checkboxes will be inserted here by JavaScript -->
+                </div>
+                <div class="form-text">Select content types that ARE blocked in this channel</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Redirect Channel -->
+          <div class="mb-4">
+            <label for="redirectChannelSelect" class="form-label fw-semibold">
+              4. Redirect Channel (Optional)
+            </label>
+            <select class="form-select form-select-lg" id="redirectChannelSelect">
+              <option value="">No redirect</option>
+            </select>
+            <div class="form-text">Users will be directed to this channel when their message is blocked</div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveRestrictionBtn">
+            <i class="fas fa-save me-2"></i>Save Restriction
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Card styling */
+  .config-card {
+    transition: all 0.3s ease;
+    border: 1px solid #dee2e6;
+  }
+
+  /* Table styling */
+  .table thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+  }
+
+  .table tbody tr {
+    transition: all 0.2s ease;
+  }
+
+  .table tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: translateX(2px);
+  }
+
+  /* Content type checkboxes */
+  .form-check {
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.2s;
+  }
+
+  .form-check:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
+  .form-check-input:checked~.form-check-label {
+    font-weight: 600;
+  }
+
+  /* Badge styling */
+  .badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+  }
+
+  /* Modal animations */
+  .modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+  }
+
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .table-responsive {
+      font-size: 0.875rem;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.25em 0.5em;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const GUILD_ID = "{{ server.id }}";
+</script>
+<script src="{{ url_for('static', filename='js/channel_restriction_v2.js') }}"></script>
+{% endblock %}

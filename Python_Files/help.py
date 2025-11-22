@@ -25,7 +25,7 @@ class HelpManager:
 
             embed = discord.Embed(
                 title="🤖 Supporter Bot Help",
-                description="Complete list of available commands organized by category.",
+                description="Complete list of available commands organized by category. Many features can also be configured via the web dashboard!",
                 color=discord.Color.from_rgb(88, 101, 242),  # Discord Blurple
                 timestamp=datetime.now(timezone.utc),
             )
@@ -60,11 +60,11 @@ class HelpManager:
             embed.add_field(
                 name="📢 YouTube Notifications (5 commands)",
                 value=(
-                    "`/y1-find-youtube-channel-id` → Find a channel's ID from its @handle or custom name.\n"
+                    "`/y1-find-youtube-channel-id` → Find a channel's ID from its @handle or URL.\n"
                     "`/y2-setup-youtube-notifications` → Set up notifications for a YT channel.\n"
                     "`/y3-disable-youtube-notifications` → Stop notifications for a YT channel.\n"
-                    "`/y4-bulk-seed-all-videos` → [ADMIN] Seed existing videos from a channel's RSS feed.\n"
-                    "`/y5-test-rss-feed` → [ADMIN] Test a channel's RSS feed and preview results."
+                    "`/y4-list-youtube-notifications` → List all configured YouTube notifications.\n"
+                    "`/y5-test-rss-feed` → Test a channel's RSS feed and preview results."
                 ),
                 inline=False,
             )
@@ -76,7 +76,7 @@ class HelpManager:
                     "`/n1-setup-no-text` → Configure a media-only channel.\n"
                     "`/n2-remove-no-text` → Remove media-only restrictions.\n\n"
                     "**Text-Only Channels:**\n"
-                    "`/n10-setup-text-only` → Configure a text-only channel (no attachments/embeds).\n"
+                    "`/n10-setup-text-only` → Configure a text-only channel (no media/embeds).\n"
                     "`/n11-remove-text-only` → Remove text-only restrictions.\n\n"
                     "**Link Control:**\n"
                     "`/n6-no-discord-link` → Block Discord invite links only.\n"
@@ -113,7 +113,7 @@ class HelpManager:
                 )
 
             embed.set_footer(
-                text=f"Server: {interaction.guild.name} | Total: 35 commands",
+                text=f"Server: {interaction.guild.name}",
                 icon_url=interaction.guild.icon.url if interaction.guild.icon else None,
             )
 
