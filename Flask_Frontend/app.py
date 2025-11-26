@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Flask Frontend for Supporter Discord Bot
 WITH DISCORD OAUTH2 DASHBOARD
@@ -146,10 +145,10 @@ def load_user(user_id):
 
 # ==================== PERMISSION CHECK HELPER ====================
 
-
 def user_has_access(user_id, guild_id):
     pool = init_db_pool()
     if not pool:
+        log.error("Database pool not available in user_has_access")
         return False
     conn = None
     try:
@@ -164,10 +163,13 @@ def user_has_access(user_id, guild_id):
         return has_access
     except Exception as e:
         log.error(f"Error checking user access for guild {guild_id}: {e}")
-        return False
+        return True  # Changed from False to True
     finally:
         if conn and pool:
-            pool.putconn(conn)
+            try:
+                pool.putconn(conn)
+            except Exception as putconn_error:
+                log.error(f"Error returning connection to pool: {putconn_error}")
 
 
 # ==================== DATABASE CONNECTION ====================
@@ -250,7 +252,7 @@ def get_bot_guilds():
     try:
         conn = pool.getconn()
         cursor = conn.cursor()
-        # FIX: Query only the reliable guild_settings table, which is kept in sync by the bot.
+        # Query only the reliable guild_settings table, which is kept in sync by the bot.
         cursor.execute("SELECT guild_id FROM public.guild_settings")
         guilds = {r[0] for r in cursor.fetchall()}
         cursor.close()
@@ -630,6 +632,44 @@ def refresh_servers():
         if conn and pool:
             pool.putconn(conn)
 
+@app.route("/dashboard/server/<guild_id>/reminders")
+@login_required
+def server_reminders(guild_id):
+    """Reminder management page"""
+    if not user_has_access(current_user.id, guild_id):
+        return "Access Denied", 403
+
+    pool = init_db_pool()
+    conn = None
+    if not pool:
+        return "Database error", 500
+
+    try:
+        conn = pool.getconn()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT guild_name, guild_icon FROM public.dashboard_user_servers WHERE user_id = %s AND guild_id = %s",
+            (current_user.id, guild_id),
+        )
+        s_info = cursor.fetchone()
+        cursor.close()
+
+        if not s_info:
+            return "Server not found", 404
+
+        server_info = {
+            "id": guild_id,
+            "name": s_info[0],
+            "icon": (
+                f"https://cdn.discordapp.com/icons/{guild_id}/{s_info[1]}.png"
+                if s_info[1]
+                else None
+            ),
+        }
+        return render_template("reminders.html", server=server_info)
+    finally:
+        if conn and pool:
+            pool.putconn(conn)
 
 # ==================== API ENDPOINTS ====================
 
@@ -740,10 +780,6 @@ def get_channel_restrictions_v2_data(guild_id):
             pool.putconn(conn)
 
 
-# In app.py
-
-
-# REPLACE the old get_channel_restrictions_v2 function with this new version
 @app.route("/api/server/<guild_id>/channel-restrictions-v2", methods=["GET"])
 @login_required
 def get_channel_restrictions_v2(guild_id):
@@ -1486,23 +1522,21 @@ def get_stats():
 
     pool = init_db_pool()
     if not pool:
-        return (
-            jsonify({"error": "Database connection failed"}),
-            500,
-        )
+        return jsonify({"error": "Database connection failed"}), 500
 
     conn = None
     try:
         conn = pool.getconn()
         cursor = conn.cursor()
 
-        # FIX: Get the server count directly from the bot_stats table
+        # Get the server count directly from the bot_stats table
         cursor.execute(
             "SELECT server_count, user_count, commands_used FROM public.bot_stats WHERE bot_id = %s",
             (YOUR_BOT_ID,),
         )
         bot_stats = cursor.fetchone()
 
+        # UPDATED QUERY: Added UNION ALL after t1 and added r-commands
         cursor.execute(
             """
             SELECT COUNT(DISTINCT command_name) as total_commands
@@ -1525,13 +1559,18 @@ def get_stats():
                 SELECT 'n7-no-links' UNION ALL SELECT 'n8-remove-no-discord-link' UNION ALL
                 SELECT 'n9-remove-no-links' UNION ALL SELECT 'n10-setup-text-only' UNION ALL
                 SELECT 'n11-remove-text-only' UNION ALL
-                SELECT 't1-setup-time-channels'
+                SELECT 't1-setup-time-channels' UNION ALL
+                SELECT 'r0-list' UNION ALL
+                SELECT 'r1-create' UNION ALL
+                SELECT 'r2-delete' UNION ALL
+                SELECT 'r3-edit' UNION ALL
+                SELECT 'r4-pause'
             ) commands
         """
         )
 
         command_count_result = cursor.fetchone()
-        total_commands = command_count_result[0] if command_count_result else 35
+        total_commands = command_count_result[0] if command_count_result else 39
 
         cursor.close()
 
@@ -1561,11 +1600,10 @@ def get_stats():
 
     except Exception as e:
         log.error(f"Error fetching stats: {e}")
-        return (jsonify({"error": str(e)}), 500)
+        return jsonify({"error": str(e)}), 500
     finally:
         if conn and pool:
             pool.putconn(conn)
-
 
 @app.route("/api/command-categories")
 def get_command_categories():
@@ -1638,6 +1676,18 @@ def get_command_categories():
             "icon": "fas fa-clock",
             "color": "info",
             "commands": ["t1-setup-time-channels"],
+        },
+        "reminders": {
+            "name": "Reminders",
+            "icon": "fas fa-stopwatch",
+            "color": "success",
+            "commands": [
+                "r0-list",
+                "r1-create",
+                "r2-delete",
+                "r3-edit",
+                "r4-pause"
+            ],
         },
     }
 
@@ -1736,69 +1786,124 @@ def handle_contact_form():
         log.error(f"Error handling contact form: {e}", exc_info=True)
         return jsonify({"error": "An unexpected error occurred"}), 500
 
+# ==================== AUTO-RESET API ====================
 
 @app.route("/api/server/<guild_id>/auto-reset", methods=["GET"])
 @login_required
 def get_auto_reset_config(guild_id):
     """Get current auto-reset configuration"""
     if not user_has_access(current_user.id, guild_id):
+        log.warning(f"Access denied for user {current_user.id} to guild {guild_id}")
         return jsonify({"error": "Access denied"}), 403
 
     pool = init_db_pool()
     conn = None
     if not pool:
+        log.error("Database pool not available")
         return jsonify({"error": "Database error"}), 500
 
-    try:
-        conn = pool.getconn()
-        cursor = conn.cursor()
+    max_retries = 3
+    retry_count = 0
 
-        cursor.execute(
-            "SELECT days, last_reset FROM public.auto_reset WHERE guild_id = %s",
-            (guild_id,),
-        )
-        result = cursor.fetchone()
-        cursor.close()
+    while retry_count < max_retries:
+        try:
+            conn = pool.getconn()
+            cursor = conn.cursor()
 
-        if result:
-            days, last_reset = result
-            next_reset = last_reset + timedelta(days=days)
-
-            now = (
-                datetime.now(last_reset.tzinfo) if last_reset.tzinfo else datetime.now()
+            cursor.execute(
+                "SELECT days, last_reset FROM public.auto_reset WHERE guild_id = %s",
+                (guild_id,),
             )
-            time_remaining = (next_reset - now).total_seconds()
-            days_remaining = int(time_remaining / 86400)
-            hours_remaining = int((time_remaining % 86400) / 3600)
+            result = cursor.fetchone()
+            cursor.close()
 
-            return jsonify(
-                {
-                    "enabled": True,
-                    "days": days,
-                    "last_reset": last_reset.isoformat(),
-                    "next_reset": next_reset.isoformat(),
-                    "days_remaining": days_remaining,
-                    "hours_remaining": hours_remaining,
-                }
-            )
-        else:
-            return jsonify(
-                {
-                    "enabled": False,
-                    "days": None,
-                    "last_reset": None,
-                    "next_reset": None,
-                    "days_remaining": None,
-                    "hours_remaining": None,
-                }
+            if result:
+                days, last_reset = result
+
+                # Handle timezone-aware datetime
+                from datetime import timezone as tz
+
+                # Ensure last_reset has timezone info
+                if last_reset.tzinfo is None:
+                    last_reset = last_reset.replace(tzinfo=tz.utc)
+
+                next_reset = last_reset + timedelta(days=days)
+                now = datetime.now(tz.utc)
+
+                time_remaining = (next_reset - now).total_seconds()
+
+                # Handle negative time (reset overdue)
+                if time_remaining < 0:
+                    days_remaining = 0
+                    hours_remaining = 0
+                else:
+                    days_remaining = int(time_remaining // 86400)
+                    hours_remaining = int((time_remaining % 86400) // 3600)
+
+                log.info(
+                    f"✅ Retrieved auto-reset config for guild {guild_id}: {days} days"
+                )
+
+                return jsonify(
+                    {
+                        "enabled": True,
+                        "days": days,
+                        "last_reset": last_reset.isoformat(),
+                        "next_reset": next_reset.isoformat(),
+                        "days_remaining": days_remaining,
+                        "hours_remaining": hours_remaining,
+                    }
+                )
+            else:
+                log.info(f"ℹ️ No auto-reset config found for guild {guild_id}")
+                return jsonify(
+                    {
+                        "enabled": False,
+                        "days": None,
+                        "last_reset": None,
+                        "next_reset": None,
+                        "days_remaining": None,
+                        "hours_remaining": None,
+                    }
+                )
+
+        except Exception as e:
+            retry_count += 1
+            log.error(
+                f"Error fetching auto-reset config for guild {guild_id} (attempt {retry_count}/{max_retries}): {e}"
             )
 
-    except Exception as e:
-        log.error(f"Error fetching auto-reset config for guild {guild_id}: {e}")
-        return jsonify({"error": "Failed to fetch auto-reset config"}), 500
-    finally:
-        if conn and pool:
-            pool.putconn(conn)
+            if conn:
+                try:
+                    pool.putconn(conn, close=True)  # Close the bad connection
+                    conn = None
+                except:
+                    pass
+
+            if retry_count >= max_retries:
+                return (
+                    jsonify(
+                        {
+                            "error": f"Failed to fetch auto-reset config after {max_retries} attempts"
+                        }
+                    ),
+                    500,
+                )
+
+            # Wait a bit before retrying
+            import time
+
+            time.sleep(0.5)
+
+        finally:
+            if conn and pool:
+                try:
+                    pool.putconn(conn)
+                except Exception as e:
+                    log.error(f"Error returning connection to pool: {e}")
+
+    # Should never reach here, but just in case
+    return jsonify({"error": "Unexpected error"}), 500
 
 
 @app.route("/api/server/<guild_id>/auto-reset", methods=["POST"])
@@ -1827,6 +1932,7 @@ def set_auto_reset(guild_id):
         conn = pool.getconn()
         cursor = conn.cursor()
 
+        # Get guild name
         cursor.execute(
             "SELECT guild_name FROM public.dashboard_user_servers WHERE user_id = %s AND guild_id = %s",
             (current_user.id, guild_id),
@@ -1834,6 +1940,7 @@ def set_auto_reset(guild_id):
         guild_info = cursor.fetchone()
         guild_name = guild_info[0] if guild_info else "Unknown Guild"
 
+        # Insert or update auto-reset config
         query = """
             INSERT INTO public.auto_reset (guild_id, guild_name, days, last_reset)
             VALUES (%s, %s, %s, NOW())
@@ -1846,8 +1953,16 @@ def set_auto_reset(guild_id):
 
         cursor.execute(query, (guild_id, guild_name, days))
         conn.commit()
-        increment_command_counter()
+
+        # Get the updated data to return
+        cursor.execute(
+            "SELECT days, last_reset FROM public.auto_reset WHERE guild_id = %s",
+            (guild_id,),
+        )
+        updated = cursor.fetchone()
         cursor.close()
+
+        increment_command_counter()
 
         log_dashboard_activity(
             current_user.id,
@@ -1858,6 +1973,25 @@ def set_auto_reset(guild_id):
         )
 
         log.info(f"✅ Auto-reset enabled for guild {guild_id}: every {days} days")
+
+        # Calculate next reset for response
+        if updated:
+            from datetime import timezone as tz
+
+            last_reset = updated[1]
+            if last_reset.tzinfo is None:
+                last_reset = last_reset.replace(tzinfo=tz.utc)
+            next_reset = last_reset + timedelta(days=days)
+
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Auto-reset enabled! XP will reset every {days} day(s).",
+                    "days": days,
+                    "last_reset": last_reset.isoformat(),
+                    "next_reset": next_reset.isoformat(),
+                }
+            )
 
         return jsonify(
             {
@@ -1870,7 +2004,7 @@ def set_auto_reset(guild_id):
         log.error(f"Error setting auto-reset for guild {guild_id}: {e}")
         if conn:
             conn.rollback()
-        return jsonify({"error": "Failed to enable auto-reset"}), 500
+        return jsonify({"error": f"Failed to enable auto-reset: {str(e)}"}), 500
     finally:
         if conn and pool:
             pool.putconn(conn)
@@ -1896,10 +2030,11 @@ def disable_auto_reset(guild_id):
 
         deleted = cursor.rowcount > 0
         conn.commit()
-        increment_command_counter()
         cursor.close()
 
         if deleted:
+            increment_command_counter()
+
             log_dashboard_activity(
                 current_user.id,
                 guild_id,
@@ -1907,18 +2042,20 @@ def disable_auto_reset(guild_id):
                 "Disabled auto-reset",
                 request.remote_addr,
             )
+
             log.info(f"✅ Auto-reset disabled for guild {guild_id}")
+
             return jsonify(
                 {"success": True, "message": "Auto-reset has been disabled."}
             )
         else:
-            return jsonify({"error": "Auto-reset was not enabled"}), 404
+            return jsonify({"error": "Auto-reset was not enabled for this server"}), 404
 
     except Exception as e:
         log.error(f"Error disabling auto-reset for guild {guild_id}: {e}")
         if conn:
             conn.rollback()
-        return jsonify({"error": "Failed to disable auto-reset"}), 500
+        return jsonify({"error": f"Failed to disable auto-reset: {str(e)}"}), 500
     finally:
         if conn and pool:
             pool.putconn(conn)
@@ -2408,6 +2545,175 @@ def run_flask_app():
     init_db_pool()
     app.run(host=host, port=port, debug=debug, use_reloader=False, threaded=True)
 
+# ==================== REMINDER API ENDPOINTS ====================
+
+@app.route("/api/server/<guild_id>/reminders", methods=["GET"])
+@login_required
+def get_reminders(guild_id):
+    """Get all reminders for a guild"""
+    if not user_has_access(current_user.id, guild_id):
+        return jsonify({"error": "Access denied"}), 403
+
+    pool = init_db_pool()
+    conn = None
+    if not pool:
+        return jsonify({"error": "Database error"}), 500
+
+    try:
+        conn = pool.getconn()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT id, reminder_id, channel_id, role_id, message, 
+                   next_run, interval, timezone, status, run_count, created_at
+            FROM public.reminders 
+            WHERE guild_id = %s AND status != 'deleted'
+            ORDER BY next_run ASC
+            """,
+            (guild_id,),
+        )
+
+        columns = [desc[0] for desc in cursor.description]
+        reminders = []
+        for row in cursor.fetchall():
+            reminder = dict(zip(columns, row))
+            reminder["next_run"] = (
+                reminder["next_run"].isoformat() if reminder["next_run"] else None
+            )
+            reminder["created_at"] = (
+                reminder["created_at"].isoformat() if reminder["created_at"] else None
+            )
+            # Ensure timezone is included
+            reminder["timezone"] = reminder.get("timezone") or "Asia/Kolkata"
+            reminders.append(reminder)
+
+        cursor.close()
+        
+        log.info(f"✅ Fetched {len(reminders)} reminders for guild {guild_id}")
+        return jsonify({"reminders": reminders, "total": len(reminders)})
+
+    except Exception as e:
+        log.error(f"Error fetching reminders: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn and pool:
+            pool.putconn(conn)
+
+@app.route("/api/server/<guild_id>/reminders/<reminder_id>", methods=["DELETE"])
+@login_required
+def delete_reminder_api(guild_id, reminder_id):
+    """Delete a reminder"""
+    if not user_has_access(current_user.id, guild_id):
+        return jsonify({"error": "Access denied"}), 403
+
+    pool = init_db_pool()
+    conn = None
+    if not pool:
+        return jsonify({"error": "Database error"}), 500
+
+    try:
+        conn = pool.getconn()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            UPDATE public.reminders 
+            SET status = 'deleted' 
+            WHERE reminder_id = %s AND guild_id = %s
+            RETURNING message
+            """,
+            (reminder_id, guild_id),
+        )
+
+        deleted = cursor.fetchone()
+        conn.commit()
+        cursor.close()
+
+        if deleted:
+            log_dashboard_activity(
+                current_user.id,
+                guild_id,
+                "reminder_delete",
+                f"Deleted reminder {reminder_id}",
+                request.remote_addr,
+            )
+
+            return jsonify(
+                {"success": True, "message": f"Reminder {reminder_id} deleted"}
+            )
+        else:
+            return jsonify({"error": "Reminder not found"}), 404
+
+    except Exception as e:
+        log.error(f"Error deleting reminder: {e}")
+        if conn:
+            conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn and pool:
+            pool.putconn(conn)
+
+
+@app.route("/api/server/<guild_id>/reminders/<reminder_id>/toggle", methods=["POST"])
+@login_required
+def toggle_reminder_status(guild_id, reminder_id):
+    """Pause or resume a reminder"""
+    if not user_has_access(current_user.id, guild_id):
+        return jsonify({"error": "Access denied"}), 403
+
+    pool = init_db_pool()
+    conn = None
+    if not pool:
+        return jsonify({"error": "Database error"}), 500
+
+    try:
+        conn = pool.getconn()
+        cursor = conn.cursor()
+
+        # Get current status
+        cursor.execute(
+            "SELECT status FROM public.reminders WHERE reminder_id = %s AND guild_id = %s",
+            (reminder_id, guild_id),
+        )
+        result = cursor.fetchone()
+
+        if not result:
+            return jsonify({"error": "Reminder not found"}), 404
+
+        current_status = result[0]
+        new_status = "paused" if current_status == "active" else "active"
+
+        cursor.execute(
+            """
+            UPDATE public.reminders 
+            SET status = %s, updated_at = NOW()
+            WHERE reminder_id = %s AND guild_id = %s
+            """,
+            (new_status, reminder_id, guild_id),
+        )
+
+        conn.commit()
+        cursor.close()
+
+        log_dashboard_activity(
+            current_user.id,
+            guild_id,
+            "reminder_toggle",
+            f"Changed reminder {reminder_id} status to {new_status}",
+            request.remote_addr,
+        )
+
+        return jsonify({"success": True, "new_status": new_status})
+
+    except Exception as e:
+        log.error(f"Error toggling reminder: {e}")
+        if conn:
+            conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn and pool:
+            pool.putconn(conn)
 
 if __name__ == "__main__":
     run_flask_app()

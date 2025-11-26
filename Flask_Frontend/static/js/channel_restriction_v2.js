@@ -1,9 +1,8 @@
-// Flask_Frontend/static/js/channel_restriction_v2.js
-// Granular Channel Restrictions Management with Bitwise Content Type Filtering
+
 
 // ==================== CONSTANTS ====================
 
-// Content type flags (must match Python backend)
+// Content type flags
 const CONTENT_TYPES = {
   PLAIN_TEXT: { value: 1, label: 'Plain Text', icon: 'fa-font', description: 'Regular text messages' },
   DISCORD_INVITES: { value: 2, label: 'Discord Invites', icon: 'fa-link', description: 'discord.gg/... links' },

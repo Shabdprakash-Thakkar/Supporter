@@ -1,5 +1,3 @@
-# Python_Files/date_and_time.py
-
 import discord
 from discord.ext import tasks, commands
 import pytz

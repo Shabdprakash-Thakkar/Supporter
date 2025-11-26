@@ -1,0 +1,55 @@
+<div class="config-card bg-white p-4 rounded-4 shadow-sm">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="fw-bold mb-1">
+        <i class="fas fa-bell text-warning me-2"></i>Reminders
+      </h4>
+      <p class="text-muted mb-0 small">
+        Manage automated reminders. Create new ones in Discord using <code>/r1-create</code>.
+      </p>
+    </div>
+    <button class="btn btn-primary" id="refreshRemindersBtn">
+      <i class="fas fa-sync-alt me-2"></i>Refresh
+    </button>
+  </div>
+
+  <!-- Alert Box -->
+  <div class="alert alert-light border-start border-warning border-4 mb-4">
+    <i class="fas fa-info-circle text-warning me-2"></i>
+    <strong>Note:</strong> Reminders run based on the timezone configured when they were created.
+  </div>
+
+  <!-- Loader -->
+  <div id="remindersLoader" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="text-muted mt-2">Loading active reminders...</p>
+  </div>
+
+  <!-- Container for JS to inject content -->
+  <div id="remindersContainer" class="d-none"></div>
+</div>
+
+<!-- Extra CSS specific to reminders -->
+<style>
+  .reminder-card {
+    border-left: 4px solid #5865f2;
+    transition: all 0.3s ease;
+  }
+
+  .reminder-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .reminder-card.paused {
+    border-left-color: #ffc107;
+    opacity: 0.7;
+  }
+
+  .badge-interval {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.35em 0.65em;
+    border-radius: 0.25rem;
+  }
+</style>

@@ -1,5 +1,3 @@
-# Python_Files/supporter.py
-
 import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
@@ -9,7 +7,6 @@ import asyncpg
 import asyncio
 from datetime import datetime, timezone, timedelta
 
-# --- Basic Setup ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "Data_Files")
 load_dotenv(os.path.join(DATA_DIR, ".env"))
@@ -26,6 +23,7 @@ from help import HelpManager
 from owner_actions import OwnerActionsManager
 from level import LevelManager
 from youtube_notification import YouTubeManager
+from reminder import ReminderManager
 
 # --- Bot Configuration ---
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -37,8 +35,6 @@ intents.guilds = True
 intents.members = True
 intents.voice_states = True
 
-
-# --- START: NEW RELIABLE FIX ---
 class SupporterCommandTree(discord.app_commands.CommandTree):
     """A custom CommandTree to reliably count command usage in the database."""
 
@@ -62,26 +58,18 @@ class SupporterCommandTree(discord.app_commands.CommandTree):
                     )
                 except Exception as e:
                     log.error(f"Failed to increment command counter in DB: {e}")
-        # Always return True to allow the command to proceed.
         return True
-
-
-# --- END: NEW RELIABLE FIX ---
-
 
 class SupporterBot(commands.Bot):
     """A custom bot class to hold our database connection and managers."""
 
     def __init__(self):
-        # --- START: MODIFIED SECTION ---
-        # Instruct the bot to use our custom command tree class.
         super().__init__(
             command_prefix="!",
             intents=intents,
             help_command=None,
             tree_cls=SupporterCommandTree,
         )
-        # --- END: MODIFIED SECTION ---
         self.pool = None
 
     async def setup_hook(self):
@@ -119,11 +107,13 @@ class SupporterBot(commands.Bot):
         self.owner_manager = OwnerActionsManager(self, self.pool)
         self.level_manager = LevelManager(self, self.pool)
         self.youtube_manager = YouTubeManager(self, self.pool)
+        self.reminder_manager = ReminderManager(self, self.pool)
 
         await self.datetime_manager.start()
         await self.notext_manager.start()
         await self.level_manager.start()
         await self.youtube_manager.start()
+        await self.reminder_manager.start()
 
         # 3. Register slash commands from all managers
         self.datetime_manager.register_commands()
@@ -132,6 +122,7 @@ class SupporterBot(commands.Bot):
         self.owner_manager.register_commands()
         self.level_manager.register_commands()
         self.youtube_manager.register_commands()
+        self.reminder_manager.register_commands()
 
         # 4. Start the stats update loop
         self.update_stats_task.start()
@@ -220,7 +211,6 @@ async def on_ready():
 
     if bot.pool:
         try:
-            # Ensure the bot_stats row exists for this bot.
             await bot.pool.execute(
                 """
                 INSERT INTO public.bot_stats (bot_id, server_count, user_count, commands_used, last_updated)
@@ -231,7 +221,7 @@ async def on_ready():
                 len(bot.guilds),
                 sum(
                     g.member_count for g in bot.guilds if g.member_count
-                ),  # Safe member count
+                ), 
             )
             log.info("✅ Verified bot_stats table entry.")
         except Exception as e:
@@ -258,7 +248,6 @@ async def on_guild_join(guild: discord.Guild):
     """Track when bot joins a guild."""
     log.info(f"🔥 Joined a new server: {guild.name} (ID: {guild.id})")
 
-    # Check if guild is banned
     if await bot.owner_manager.is_guild_banned(guild.id):
         log.warning(f"🚫 Bot joined banned server {guild.name}. Leaving immediately.")
         try:
@@ -272,7 +261,6 @@ async def on_guild_join(guild: discord.Guild):
             await guild.leave()
             return
 
-    # Add the server to guild_settings to mark it as active
     try:
         async with bot.pool.acquire() as conn:
             await conn.execute(
@@ -291,8 +279,6 @@ async def on_guild_remove(guild: discord.Guild):
     """Track when bot leaves a guild and mark it as inactive."""
     log.info(f"👋 Left server: {guild.name} (ID: {guild.id})")
 
-    # FIX: Remove the guild from the primary settings table.
-    # This marks it as "inactive" for the dashboard and stats without deleting user data.
     try:
         async with bot.pool.acquire() as conn:
             await conn.execute(
@@ -305,28 +291,20 @@ async def on_guild_remove(guild: discord.Guild):
 
 
 async def sync_all_guilds_to_database():
-    """
-    On startup, ensure the database's active server list matches the bot's current guilds.
-    1. Adds any new guilds.
-    2. Removes any guilds the bot was kicked from while offline.
-    """
     if not bot.pool:
         log.error("Cannot sync guilds: Database pool not initialized")
         return
 
     log.info(f"🔄 Syncing {len(bot.guilds)} guilds to database...")
 
-    # Get the "source of truth" list of guild IDs from the bot
     current_guild_ids = {str(g.id) for g in bot.guilds}
 
     async with bot.pool.acquire() as conn:
-        # Get the list of guilds currently marked as active in the DB
         db_guild_ids = {
             row["guild_id"]
             for row in await conn.fetch("SELECT guild_id FROM public.guild_settings")
         }
 
-        # Find which guilds to add and which to remove
         guilds_to_add = current_guild_ids - db_guild_ids
         guilds_to_remove = db_guild_ids - current_guild_ids
 

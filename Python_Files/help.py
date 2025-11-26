@@ -1,5 +1,3 @@
-# Python_Files/help.py
-
 import discord
 from discord.ext import commands
 from datetime import datetime, timezone
@@ -70,6 +68,18 @@ class HelpManager:
             )
 
             embed.add_field(
+                name="🔔 Smart Reminders (5 commands)",
+                value=(
+                    "`/r0-list` → List all active reminders in this server.\n"
+                    "`/r1-create` → Create a new reminder (supports timezones & intervals).\n"
+                    "`/r2-delete` → Delete a specific reminder by ID.\n"
+                    "`/r3-edit` → Edit an existing reminder.\n"
+                    "`/r4-pause` → Pause or resume a reminder."
+                ),
+                inline=False,
+            )
+
+            embed.add_field(
                 name="🚫📝 Channel Restrictions (11 commands)",
                 value=(
                     "**Media-Only Channels:**\n"
@@ -120,3 +130,4 @@ class HelpManager:
             await interaction.followup.send(embed=embed)
 
         log.info("💻 Help command registered.")
+        

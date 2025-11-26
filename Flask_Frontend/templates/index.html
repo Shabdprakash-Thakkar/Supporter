@@ -205,28 +205,28 @@ block content %}
       <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="500">
         <div class="feature-card h-100 p-4 bg-white rounded-4 shadow-sm hover-lift">
           <div class="feature-icon bg-success bg-opacity-10 rounded-circle p-3 mb-3">
-            <i class="fas fa-cog text-success fs-2"></i>
+            <i class="fas fa-bell text-success fs-2"></i>
           </div>
-          <h4 class="fw-bold mb-3">Easy Configuration</h4>
+          <h4 class="fw-bold mb-3">Smart Reminders</h4>
           <p class="text-muted mb-3">
-            Simple slash commands make setup a breeze. No complicated
-            configuration files or technical knowledge required.
+              Never forget a task! Set recurring or one-time reminders with full timezone support and advanced scheduling.
           </p>
           <ul class="list-unstyled">
             <li class="mb-2">
-              <i class="fas fa-check text-success me-2"></i>Intuitive slash
+              <i class="fas fa-check text-success me-2"></i>Intervals (Daily/Weekly)
               commands
             </li>
             <li class="mb-2">
-              <i class="fas fa-check text-success me-2"></i>Real-time config
+              <i class="fas fa-check text-success me-2"></i>Timezone Support
               viewer
             </li>
             <li class="mb-2">
-              <i class="fas fa-check text-success me-2"></i>Role-based
+              <i class="fas fa-check text-success me-2"></i>Role & Channel Pings
               permissions
             </li>
             <li class="mb-2">
-              <i class="fas fa-check text-success me-2"></i>Comprehensive help
+              <i class="fas fa-check text-success me-2"></i>Edit & Delete
+              reminders
             </li>
           </ul>
         </div>
@@ -382,7 +382,7 @@ block content %}
 {% endblock %}
 {% block extra_js %}
 <script>
-  //  FIXED Stats Update System
+  //  Stats Update System
 
     let statsUpdateInterval;
     let lastStatsData = null;
@@ -582,6 +582,7 @@ block content %}
     });
 
     // ✨ Command categories function (from your existing code)
+    // ✨ Command categories function
     async function updateCommandCategories() {
       try {
         const response = await fetch("/api/command-categories");
@@ -591,10 +592,18 @@ block content %}
         container.innerHTML = "";
 
         const categories = data.categories;
-        const categoryOrder = ["general", "leveling", "youtube", "restrictions", "time"];
+        // The order you want them to appear
+        const categoryOrder = ["general", "leveling", "youtube", "restrictions", "time", "reminders"];
 
         categoryOrder.forEach((key, index) => {
           const cat = categories[key];
+          
+          // SAFETY CHECK: If category doesn't exist in API, skip it instead of crashing
+          if (!cat) {
+            console.warn(`Category '${key}' missing from API response. Skipping.`);
+            return;
+          }
+
           const delay = (index + 1) * 100;
 
           const col = document.createElement("div");
@@ -632,7 +641,7 @@ block content %}
       } catch (error) {
         console.error("Error fetching command categories:", error);
         document.getElementById("command-categories-container").innerHTML =
-          '<div class="col-12 text-center text-danger">Failed to load commands</div>';
+          '<div class="col-12 text-center text-danger">Failed to load commands: ' + error.message + '</div>';
       }
     };
 </script>

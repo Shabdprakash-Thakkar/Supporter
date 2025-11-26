@@ -1,5 +1,3 @@
-# Python_Files/owner_actions.py
-
 import discord
 from discord import app_commands
 from discord.ext import commands

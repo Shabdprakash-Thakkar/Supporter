@@ -1,5 +1,3 @@
-# Python_Files/no_text.py
-
 import discord
 from discord import app_commands
 from discord.ext import commands

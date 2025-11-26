@@ -1,4 +1,4 @@
-// Theme Toggle - FIXED VERSION with extensive logging
+// Theme Toggle
 console.log("🎨 [Theme] Script file loaded");
 
 (function () {

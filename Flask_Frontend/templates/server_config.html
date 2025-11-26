@@ -106,6 +106,18 @@ endblock %} {% block content %}
           <i class="fas fa-shield-alt me-1"></i> Channel Restriction
         </button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link"
+          id="reminders-tab"
+          data-bs-toggle="tab"
+          data-bs-target="#reminders"
+          type="button"
+          role="tab"
+        >
+          <i class="fas fa-bell me-1"></i> Reminders
+        </button>
+      </li>
     </ul>
 
     <!-- Tab Content -->
@@ -278,96 +290,80 @@ endblock %} {% block content %}
                 </table>
               </div>
             </div>
+
             <div class="tab-pane fade" id="level-settings">
+              <!-- Automatic XP Reset Section -->
               <h5 class="fw-semibold mb-3">
-                <i class="fas fa-sync-alt text-warning me-2"></i>Automatic XP
-                Reset
+                <i class="fas fa-sync-alt text-warning me-2"></i>Automatic XP Reset
               </h5>
               <p class="text-muted">
-                Schedule automatic XP resets for seasonal events. Status updates
-                every 5 minutes.
+                Schedule automatic XP resets for seasonal events.
               </p>
-              <div id="auto-reset-loader" class="text-center py-3">
-                <div class="spinner-border spinner-border-sm"></div>
-              </div>
-              <div id="auto-reset-content" class="d-none">
-                <!-- Status Card (shows when enabled) -->
-                <div id="auto-reset-status-card" class="alert d-none mb-3">
-                  <div
-                    class="d-flex justify-content-between align-items-center"
-                  >
-                    <div>
-                      <h6
-                        class="mb-1 fw-semibold"
-                        id="auto-reset-status-title"
-                      ></h6>
-                      <p class="mb-0 small" id="auto-reset-status-details"></p>
-                    </div>
-                    <button
-                      class="btn btn-sm btn-outline-danger"
-                      id="disable-auto-reset-btn"
-                      style="display: none"
-                    >
-                      <i class="fas fa-times me-1"></i>Disable
-                    </button>
-                  </div>
-                </div>
 
-                <!-- Configuration Card -->
-                <div class="card border-warning">
-                  <div class="card-body">
-                    <h6 class="card-title">
-                      <i class="fas fa-calendar-alt me-2"></i>Configure Schedule
+              <!-- Status Card - Always visible, shows current state -->
+              <div id="auto-reset-status-card" class="alert alert-secondary mb-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                  <div class="mb-2 mb-md-0">
+                    <h6 class="mb-1 fw-semibold" id="auto-reset-status-title">
+                      <i class="fas fa-info-circle me-2"></i>Not Configured
                     </h6>
-                    <div class="row g-3 align-items-end">
-                      <div class="col-md-6">
-                        <label for="auto-reset-days" class="form-label"
-                          >Reset Every (Days)</label
-                        >
-                        <input
-                          type="number"
-                          class="form-control"
-                          id="auto-reset-days"
-                          min="1"
-                          max="365"
-                          placeholder="e.g., 30"
-                        />
-                        <small class="text-muted"
-                          >Enter a value between 1-365 days</small
-                        >
-                      </div>
-                      <div class="col-md-6">
-                        <button
-                          class="btn btn-warning w-100"
-                          id="enable-auto-reset-btn"
-                        >
-                          <i class="fas fa-check me-2"></i>Enable Auto-Reset
-                        </button>
-                      </div>
+                    <p class="mb-0 small" id="auto-reset-status-details">Loading configuration...</p>
+                  </div>
+                  <button class="btn btn-sm btn-outline-danger d-none" id="disable-auto-reset-btn">
+                    <i class="fas fa-stop me-1"></i>Stop Auto-Reset
+                  </button>
+                </div>
+              </div>
+
+              <!-- Configuration Card -->
+              <div class="card border-warning mb-4">
+                <div class="card-header bg-warning bg-opacity-10">
+                  <h6 class="mb-0 fw-semibold">
+                    <i class="fas fa-calendar-alt me-2"></i>Configure Schedule
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3 align-items-end">
+                    <div class="col-lg-7 col-md-6 col-12">
+                      <label for="auto-reset-days" class="form-label fw-semibold">Reset Every (Days)</label>
+                      <!-- class = align-items-end -->
+                      <input 
+                        type="number" 
+                        class="form-control" 
+                        id="auto-reset-days" 
+                        min="1" 
+                        max="365" 
+                        placeholder="e.g., 30 for monthly"
+                        style="height: 58px;"
+                      />
+                      <small class="text-muted d-block mt-1">Enter 1-365 days between resets</small>
+                    </div>
+                    <div class="col-lg-5 col-md-6 col-12">
+                      <!--<label class="form-label fw-semibold d-block">&nbsp;</label>-->
+                      <button class="btn btn-warning btn-lg w-100" id="enable-auto-reset-btn" style="height: 58px;">
+                        <i class="fas fa-play me-2"></i>Enable Auto-Reset
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
+
               <hr class="my-4" />
+
+              <!-- Manual Reset Section -->
               <h5 class="fw-semibold mb-3">
-                <i class="fas fa-exclamation-triangle text-danger me-2"></i
-                >Manual Reset
+                <i class="fas fa-exclamation-triangle text-danger me-2"></i>Manual Reset
               </h5>
               <div class="alert alert-danger">
                 <h6 class="alert-heading">
                   <i class="fas fa-skull-crossbones me-2"></i>Danger Zone
                 </h6>
                 <p class="mb-0">
-                  This will immediately reset <strong>ALL</strong> users' XP to
-                  0 and remove all level reward roles. This action is
-                  irreversible!
+                  This will immediately reset <strong>ALL</strong> users' XP to 0 and 
+                  remove all level reward roles. This action is irreversible!
                 </p>
               </div>
-              <button
-                class="btn btn-danger btn-lg"
-                data-bs-toggle="modal"
-                data-bs-target="#confirmResetModal"
-              >
+              <button class="btn btn-danger btn-lg" data-bs-toggle="modal" data-bs-target="#confirmResetModal">
                 <i class="fas fa-trash-alt me-2"></i>Reset All XP Now
               </button>
             </div>
@@ -468,13 +464,18 @@ endblock %} {% block content %}
 
       <!-- ==================== CHANNEL RESTRICTIONS TAB (NEW) ==================== -->
       <div class="tab-pane fade" id="restrictions-v2" role="tabpanel">
-      <div class="embed-responsive" style="min-height: 800px;">
-        <iframe 
-          src="{{ url_for('get_channel_restrictions_v2', guild_id=server.id) }}" 
-          style="width: 100%; height: 800px; border: none; border-radius: 8px;"
-          id="restrictions-iframe"
-          title="Channel Restrictions Manager"
-        ></iframe>
+        <div class="embed-responsive" style="min-height: 800px;">
+          <iframe 
+            src="{{ url_for('get_channel_restrictions_v2', guild_id=server.id) }}" 
+            style="width: 100%; height: 800px; border: none; border-radius: 8px;"
+            id="restrictions-iframe"
+            title="Channel Restrictions Manager"
+          ></iframe>
+        </div>
+      </div>
+      <!-- ==================== REMINDERS TAB ==================== -->
+      <div class="tab-pane fade" id="reminders" role="tabpanel">
+        {% include 'reminders.html' %}
       </div>
     </div>
 </section>
@@ -696,76 +697,137 @@ endblock %} {% block content %}
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
   }
 
-  /* Fix for other tabs too */
-  .tab-pane {
-    min-height: 400px;
-  }
+/* Auto-reset schedule alignment */
+.card-body .row.g-3 {
+  align-items: end !important;
+}
 
-  .server-icon-placeholder {
-    background: linear-gradient(135deg, #5865f2 0%, #7289da 100%);
-  }
+/* Ensure button matches input height */
+#enable-auto-reset-btn {
+  height: 58px !important;
+  min-height: 58px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.75rem 1.5rem !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+}
 
-  .config-card {
-    transition: all 0.3s ease;
-    border: 1px solid #dee2e6;
+/* Responsive adjustments */
+@media (max-width: 991px) {
+  .card-body .row.g-3 .col-lg-7,
+  .card-body .row.g-3 .col-lg-5 {
+    width: 100% !important;
+    max-width: 100% !important;
   }
+}
 
-  .nav-tabs .nav-link {
-    color: #6c757d;
-    border: none;
-    border-bottom: 3px solid transparent;
-    font-weight: 500;
+@media (max-width: 767px) {
+  /* Stack vertically on mobile */
+  .card-body .row.g-3 {
+    flex-direction: column !important;
   }
+  
+  /* Add spacing between input and button on mobile */
+  .card-body .row.g-3 .col-12:first-child {
+    margin-bottom: 1rem !important;
+  }
+  
+  /* Full width on mobile */
+  #enable-auto-reset-btn,
+  #auto-reset-days {
+    width: 100% !important;
+  }
+}
 
-  .nav-tabs .nav-link.active {
-    color: #5865f2;
-    border-color: #5865f2;
-    background: none;
-  }
+/* Make sure input is same height */
+#auto-reset-days {
+  height: 58px !important;
+  min-height: 58px !important;
+  font-size: 1rem !important;
+  padding: 0.75rem 1rem !important;
+}
 
-  .reward-item {
-    border-left: 4px solid #5865f2;
-    background-color: #f8f9fa;
-  }
+/* Ensure label spacing is consistent */
+.card-body .form-label {
+  margin-bottom: 0.5rem !important;
+  display: block !important;
+}
 
-  .reward-item:hover {
-    background-color: #e9ecef;
-  }
+.tab-pane {
+  min-height: 400px;
+}
 
-  .form-check-input:checked {
-    background-color: #0dcaf0;
-    border-color: #0dcaf0;
-  }
+.server-icon-placeholder {
+  background: linear-gradient(135deg, #5865f2 0%, #7289da 100%);
+}
 
-  .form-switch .form-check-input {
-    width: 3.5em;
-    height: 1.75em;
-  }
+.config-card {
+  transition: all 0.3s ease;
+  border: 1px solid #dee2e6;
+}
 
-  .form-switch.d-flex {
-    padding-left: 0;
-  }
+.nav-tabs .nav-link {
+  color: #6c757d;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-weight: 500;
+}
 
-  .form-switch.d-flex .form-check-input {
-    margin-left: 0;
-  }
+.nav-tabs .nav-link.active {
+  color: #5865f2;
+  border-color: #5865f2;
+  background: none;
+}
 
-  .nav-pills .nav-link {
-    color: #495057;
-  }
+.reward-item {
+  border-left: 4px solid #5865f2;
+  background-color: #f8f9fa;
+}
 
-  .nav-pills .nav-link.active {
-    background-color: #5865f2;
-    color: white;
-  }
+.reward-item:hover {
+  background-color: #e9ecef;
+}
 
-  .table > :not(caption) > * > * {
-    vertical-align: middle;
-  }
+.form-check-input:checked {
+  background-color: #0dcaf0;
+  border-color: #0dcaf0;
+}
+
+.form-switch .form-check-input {
+  width: 3.5em;
+  height: 1.75em;
+}
+
+.form-switch.d-flex {
+  padding-left: 0;
+}
+
+.form-switch.d-flex .form-check-input {
+  margin-left: 0;
+}
+
+.nav-pills .nav-link {
+  color: #495057;
+}
+
+.nav-pills .nav-link.active {
+  background-color: #5865f2;
+  color: white;
+}
+
+.table > :not(caption) > * > * {
+  vertical-align: middle;
+}
 </style>
 {% endblock %} {% block extra_js %}
 <script>
   const GUILD_ID = "{{ server.id }}";
 </script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/reminders.js') }}"></script>
+<!--
+<script src="{{ url_for('static', filename='js/get_channel_restrictions_v2.js') }}"></script>
+-->
 {% endblock %}

@@ -1,5 +1,3 @@
-/* ===== THEME TOGGLE STYLES - COMPLETE FIXED VERSION ===== */
-
 /* Root variables for light mode (default) */
 :root {
   --bg-primary: #ffffff;
@@ -18,7 +16,6 @@
   --footer-bg: #343a40;
 }
 
-/* Dark mode variables */
 [data-theme="dark"] {
   --bg-primary: #1a1d23;
   --bg-secondary: #23272f;
@@ -36,14 +33,12 @@
   --footer-bg: #111827;
 }
 
-/* Apply theme variables */
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* ===== THEME TOGGLE BUTTON ===== */
 .theme-toggle-btn {
   position: relative;
   width: 60px;
@@ -102,11 +97,6 @@ body {
   }
 }
 
-/* ===== NAVBAR "ADD TO DISCORD" BUTTON - FIXED ===== */
-
-/* Light mode styles are handled by the .discord-btn class at the bottom */
-
-/* Dark mode - Blue background with white text */
 [data-theme="dark"] .navbar .btn-light,
 [data-theme="dark"] .nav-link.btn.btn-light {
   background-color: #5865F2 !important;
@@ -124,7 +114,6 @@ body {
   transform: translateY(-1px);
 }
 
-/* Ensure Discord icon is white in dark mode */
 [data-theme="dark"] .navbar .btn-light i,
 [data-theme="dark"] .nav-link.btn.btn-light i {
   color: #ffffff !important;
@@ -132,7 +121,6 @@ body {
 
 /* ===== CTA SECTION AND HERO BUTTONS ===== */
 
-/* CTA Section and Hero buttons in dark mode - White bg with blue text */
 [data-theme="dark"] .cta-section .btn-light,
 [data-theme="dark"] .hero-section .btn-light {
   background-color: #ffffff !important;
@@ -149,7 +137,6 @@ body {
   transform: translateY(-2px);
 }
 
-/* Remove conflicting gradient background styles */
 [data-theme="dark"] .bg-gradient-primary .btn-light {
   background: #ffffff !important;
   background-image: none !important;
@@ -157,7 +144,6 @@ body {
   border: none !important;
 }
 
-/* Outline buttons in dark mode */
 [data-theme="dark"] .btn-outline-light {
   border-color: rgba(255, 255, 255, 0.8) !important;
   color: #ffffff !important;
@@ -378,7 +364,7 @@ body.theme-transitioning {
   pointer-events: none;
 }
 
-/* ===== NAVBAR SPACING (RESPONSIVE) ===== */
+/* ===== NAVBAR SPACING ===== */
 
 .navbar-nav .nav-item:last-child {
   margin-right: 0;
@@ -407,12 +393,8 @@ body.theme-transitioning {
   transform: translateY(-1px);
 }
 
-/* NOTE: Dark mode for this button is handled by the .navbar .btn-light rule
-   near the top of the file to ensure correct specificity. */
+/* ===== SERVER CONFIG PAGE ===== */
 
-/* ===== SERVER CONFIG PAGE DARK MODE FIXES ===== */
-
-/* Server header section */
 [data-theme="dark"] .server-config-section .server-header {
   background-color: var(--card-bg) !important;
   color: var(--text-primary) !important;
@@ -425,13 +407,11 @@ body.theme-transitioning {
   color: var(--text-primary) !important;
 }
 
-/* Configuration cards */
 [data-theme="dark"] .server-config-section .config-card {
   background-color: var(--card-bg) !important;
   color: var(--text-primary) !important;
 }
 
-/* Form labels and text */
 [data-theme="dark"] .server-config-section .form-label {
   color: var(--text-primary) !important;
 }
@@ -441,7 +421,6 @@ body.theme-transitioning {
   color: var(--text-primary) !important;
 }
 
-/* Tab navigation */
 [data-theme="dark"] .server-config-section .nav-tabs {
   border-color: var(--border-color);
 }
@@ -456,7 +435,6 @@ body.theme-transitioning {
   border-color: var(--border-color) var(--border-color) var(--card-bg) !important;
 }
 
-/* Nav pills */
 [data-theme="dark"] .server-config-section .nav-pills .nav-link {
   color: var(--text-primary) !important;
 }
@@ -466,19 +444,15 @@ body.theme-transitioning {
   color: white !important;
 }
 
-/* Table styling */
 [data-theme="dark"] .server-config-section .table {
-  /* Set the text color for the entire table */
   color: var(--text-primary) !important;
 
-  /* Override Bootstrap's CSS variables for dark mode */
   --bs-table-bg: transparent !important;
   --bs-table-border-color: var(--border-color) !important;
   --bs-table-striped-bg: var(--hover-bg) !important;
   --bs-table-striped-color: var(--text-primary) !important;
 }
 
-/* Override the hover effect variables for rows */
 [data-theme="dark"] .server-config-section .table-hover > tbody > tr:hover > * {
   --bs-table-hover-bg: var(--hover-bg) !important;
   --bs-table-hover-color: var(--text-primary) !important;
@@ -503,12 +477,10 @@ body.theme-transitioning {
   color: var(--text-primary) !important;
 }
 
-/* Close button for modals in dark mode */
 [data-theme="dark"] .btn-close {
   filter: invert(1);
 }
 
-/* Small text and helper text */
 [data-theme="dark"] .server-config-section small {
   color: var(--text-secondary) !important;
 }
@@ -517,7 +489,6 @@ body.theme-transitioning {
   color: var(--text-secondary) !important;
 }
 
-/* Alert boxes */
 [data-theme="dark"] .server-config-section .alert-info {
   background-color: rgba(0, 176, 244, 0.15) !important;
   border-color: rgba(0, 176, 244, 0.3) !important;
@@ -536,7 +507,6 @@ body.theme-transitioning {
   color: var(--text-primary) !important;
 }
 
-/* Card borders and backgrounds */
 [data-theme="dark"] .server-config-section .card {
   background-color: var(--card-bg) !important;
   border-color: var(--border-color) !important;
@@ -550,7 +520,6 @@ body.theme-transitioning {
   color: var(--text-primary) !important;
 }
 
-/* Reward items */
 [data-theme="dark"] .server-config-section .reward-item {
   background-color: var(--hover-bg) !important;
   color: var(--text-primary) !important;
@@ -560,7 +529,7 @@ body.theme-transitioning {
   background-color: var(--bg-tertiary) !important;
 }
 
-/* ===== LEADERBOARD TABLE FIX ===== */
+/* ===== LEADERBOARD TABLE ===== */
 [data-theme="dark"] .table thead th {
   color: var(--text-primary) !important;
   background-color: var(--bg-tertiary) !important;
@@ -577,13 +546,11 @@ body.theme-transitioning {
   background-color: var(--hover-bg) !important;
 }
 
-/* ===== FIX DROPDOWN SELECT ARROW SPACING ===== */
 .form-select {
   padding-right: 2.5rem !important; /* Make room for the arrow */
   background-position: right 0.75rem center !important;
 }
 
-/* Specific fix for leaderboard limit selector */
 #leaderboard-limit {
   min-width: 120px;
   padding-right: 2.5rem !important;

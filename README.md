@@ -2,14 +2,14 @@
 
 <div align="center">
 
-![Supporter BOT](https://img.shields.io/badge/Discord-Bot-5865F2?style=for-the-badge&logo=discord&logoColor=white)
+![Discord](https://img.shields.io/badge/Discord-Bot-5865F2?style=for-the-badge&logo=discord&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-2.0+-000000?style=for-the-badge&logo=flask&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791?style=for-the-badge&logo=postgresql&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.0+-000000?style=for-the-badge&logo=flask&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 
-**A powerful, multi-functional Discord bot with a modern web dashboard for complete server management and user engagement.**
+**A comprehensive multi-functional Discord bot with advanced leveling, YouTube notifications, and intelligent channel management**
 
-[Features](#-features) • [Dashboard](#-web-dashboard) • [Commands](#-command-reference) • [Installation](#-installation) • [Support](#-support)
+[Features](#-features) • [Dashboard](#-web-dashboard) • [Commands](#-command-reference) • [Support](#-support)
 
 </div>
 
@@ -48,6 +48,16 @@ Engage your community with a comprehensive XP and leveling system that rewards a
 - **Auto-Reset Scheduling** - Perfect for seasonal events (1-365 days)
 - **Manual Reset** - Instantly reset all XP and remove reward roles
 - **Configurable XP Rates** - Customize XP values via the dashboard
+
+### 🔔 Smart Reminders
+
+Never forget a task with a robust, timezone-aware reminder system.
+
+- **Advanced Scheduling** - Set one-time or recurring reminders
+- **Flexible Intervals** - Daily (`1d`), Weekly (`7d`), Hourly (`6h`), or custom minutes
+- **Timezone Support** - Full support for international timezones (IST, EST, UTC, etc.)
+- **Role Pings** - Option to mention specific roles when reminders fire
+- **Dashboard Integration** - View and manage reminders via the web interface
 
 ### 📺 YouTube Notifications
 
@@ -190,6 +200,16 @@ A modern, responsive web dashboard built with Flask and Bootstrap 5.
 | `/y4-list-youtube-notifications` | List all configured notifications | Manage Guild |
 | `/y5-test-rss-feed` | Test RSS feed and preview results | Manage Guild |
 
+### Smart Reminder Commands (5)
+
+| Command | Description | Permission |
+|---------|-------------|------------|
+| `/r0-list` | List all active reminders | Everyone |
+| `/r1-create <channel> <msg> <time> [interval]` | Create a new reminder | Everyone |
+| `/r2-delete <reminder_id>` | Delete a specific reminder | Everyone |
+| `/r3-edit <reminder_id>` | Edit an existing reminder | Everyone |
+| `/r4-pause <reminder_id>` | Pause or resume a reminder | Everyone |
+
 ### Channel Restriction Commands (11)
 
 | Command | Description | Permission |
@@ -221,7 +241,7 @@ A modern, responsive web dashboard built with Flask and Bootstrap 5.
 | `/g5-banguild` | Ban a server from using the bot | Bot Owner |
 | `/g6-unbanguild` | Unban a server | Bot Owner |
 
-**Total Commands: 34**
+**Total Commands: 39**
 
 ---
 
@@ -238,6 +258,7 @@ Supporter/
 │   ├── no_text.py                 # Channel restrictions (V2 granular)
 │   ├── date_and_time.py           # Auto-updating time channels
 │   ├── youtube_notification.py    # YouTube RSS monitoring
+│   ├── reminder.py                # Reminder system logic
 │   ├── owner_actions.py           # Owner-only commands
 │   └── help.py                    # Help command system
 │
@@ -250,7 +271,8 @@ Supporter/
 │   │   ├── dashboard.html         # Server selection page
 │   │   ├── server_config.html     # Server configuration page
 │   │   ├── iframe_base.html       # Base for iframe content
-│   │   └── channel_restrictions_v2.html  # Restrictions manager
+│   │   ├── channel_restrictions_v2.html  # Restrictions manager
+│   │   └── reminders.html         # Reminders component
 │   └── static/                    # Static assets
 │       ├── css/
 │       │   ├── style.css          # Main styles
@@ -259,6 +281,7 @@ Supporter/
 │       │   ├── main.js            # Core JavaScript
 │       │   ├── dashboard.js       # Dashboard functionality
 │       │   ├── channel_restriction_v2.js  # Restrictions UI
+│       │   ├── reminders.js       # Reminders UI logic
 │       │   └── theme-toggle.js    # Theme switching
 │       └── images/                # Logo, favicons
 │
@@ -279,7 +302,7 @@ Need help? Reach out through these channels:
 | 💬 Discord | [Join Support Server](https://discord.gg/NbNNU24HjF) |
 | 🐙 GitHub | [@Shabdprakash-Thakkar](https://github.com/Shabdprakash-Thakkar) |
 | 📸 Instagram | [@study_time_95](https://www.instagram.com/study_time_95/) |
-| 🌐 Website | [shabdprakash-thakkar.online](https://shabdprakash-thakkar.online) |
+| 🌐 Website | [supporterbot.online](https://supporterbot.online) |
 | 📧 Email | shabdprakash95@gmail.com |
 
 ---

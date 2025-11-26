@@ -1,5 +1,3 @@
-// REPLACE the ENTIRE contents of dashboard.js with this code
-
 document.addEventListener("DOMContentLoaded", function () {
   if (typeof GUILD_ID !== "undefined") {
     loadDashboardData();
@@ -114,6 +112,7 @@ function populateLevelingTab(config, discordData) {
 
   // Load auto-reset configuration
   loadAutoResetConfig();
+  console.log("✅ Leveling tab populated, auto-reset config loaded");
 }
 
 function populateTimeChannels(config, allChannels) {
@@ -143,74 +142,145 @@ function populateRewardModal(roles) {
 }
 
 // ==================== AUTO RESET CONFIGURATION ====================
-
 async function loadAutoResetConfig() {
-  const loader = document.getElementById("auto-reset-loader");
-  const content = document.getElementById("auto-reset-content");
   const statusCard = document.getElementById("auto-reset-status-card");
+  const statusTitle = document.getElementById("auto-reset-status-title");
+  const statusDetails = document.getElementById("auto-reset-status-details");
+  const disableBtn = document.getElementById("disable-auto-reset-btn");
+  const enableBtn = document.getElementById("enable-auto-reset-btn");
+  const daysInput = document.getElementById("auto-reset-days");
 
-  if (loader) loader.style.display = "block";
-  if (content) content.style.display = "none";
+  // Show loading state
+  if (statusTitle) {
+    statusTitle.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
+  }
+  if (statusDetails) {
+    statusDetails.textContent = 'Please wait...';
+  }
 
   try {
+    console.log(`🔍 Fetching auto-reset config for guild: ${GUILD_ID}`);
+    
     const response = await fetch(`/api/server/${GUILD_ID}/auto-reset`);
+    
+    console.log(`📡 Response status: ${response.status}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
     const data = await response.json();
+    console.log("📦 Auto-reset data received:", data);
 
-    if (!response.ok)
-      throw new Error(data.error || "Failed to load auto-reset config");
-
-    if (content) content.style.display = "block";
-    if (loader) loader.style.display = "none";
-
-    if (data.enabled && statusCard) {
-      statusCard.classList.remove("d-none");
+    if (data.enabled) {
+      // Auto-reset is ENABLED
+      statusCard.classList.remove("alert-secondary", "alert-danger");
       statusCard.classList.add("alert-success");
-      statusCard.classList.remove("alert-secondary");
 
-      const titleEl = document.getElementById("auto-reset-status-title");
-      const detailsEl = document.getElementById("auto-reset-status-details");
-      const disableBtn = document.getElementById("disable-auto-reset-btn");
+      // Parse dates
+      const nextResetDate = new Date(data.next_reset);
+      const lastResetDate = new Date(data.last_reset);
+      
+      // Format dates in IST
+      const istOptions = { 
+        timeZone: 'Asia/Kolkata', 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      };
+      
+      const lastResetIST = lastResetDate.toLocaleString('en-IN', istOptions);
+      const nextResetIST = nextResetDate.toLocaleString('en-IN', istOptions);
 
-      if (titleEl)
-        titleEl.textContent = `✅ Auto-Reset Active (Every ${data.days} day${data.days > 1 ? "s" : ""
-          })`;
+      statusTitle.innerHTML = `
+        <i class="fas fa-check-circle text-success me-2"></i>
+        Auto-Reset Active — Every ${data.days} Day${data.days > 1 ? 's' : ''}
+      `;
 
-      if (detailsEl) {
-        const nextResetDate = new Date(data.next_reset);
-        detailsEl.textContent = `Next reset in ${data.days_remaining} day${data.days_remaining !== 1 ? "s" : ""
-          } and ${data.hours_remaining} hour${data.hours_remaining !== 1 ? "s" : ""
-          } (${nextResetDate.toLocaleDateString()})`;
+      statusDetails.innerHTML = `
+        <div class="mt-2">
+          <div><i class="fas fa-history me-2"></i><strong>Last Reset:</strong> ${lastResetIST} IST</div>
+          <div><i class="fas fa-clock me-2"></i><strong>Next Reset:</strong> ${nextResetIST} IST</div>
+          <div class="mt-2 text-warning">
+            <i class="fas fa-hourglass-half me-2"></i>
+            <strong>Time Remaining:</strong> ${data.days_remaining} day${data.days_remaining !== 1 ? 's' : ''} 
+            and ${data.hours_remaining} hour${data.hours_remaining !== 1 ? 's' : ''}
+          </div>
+        </div>
+      `;
+
+      // Show disable button
+      if (disableBtn) {
+        disableBtn.classList.remove("d-none");
+      }
+      
+      // Update enable button text
+      if (enableBtn) {
+        enableBtn.innerHTML = '<i class="fas fa-edit me-2"></i>Update Schedule';
+      }
+      
+      // Set input value
+      if (daysInput) {
+        daysInput.value = data.days;
+        daysInput.placeholder = `Currently: ${data.days} days`;
       }
 
-      if (disableBtn) disableBtn.style.display = "inline-block";
-    } else if (statusCard) {
-      statusCard.classList.remove("d-none");
+      console.log("✅ Auto-reset status displayed successfully");
+
+    } else {
+      // Auto-reset is DISABLED
+      statusCard.classList.remove("alert-success", "alert-danger");
       statusCard.classList.add("alert-secondary");
-      statusCard.classList.remove("alert-success");
 
-      const titleEl = document.getElementById("auto-reset-status-title");
-      const detailsEl = document.getElementById("auto-reset-status-details");
-      const disableBtn = document.getElementById("disable-auto-reset-btn");
+      statusTitle.innerHTML = `
+        <i class="fas fa-pause-circle text-secondary me-2"></i>
+        Auto-Reset Not Configured
+      `;
+      
+      statusDetails.innerHTML = `
+        <span class="text-muted">Set up automatic XP resets using the form below.</span>
+      `;
 
-      if (titleEl) titleEl.textContent = "⚠️ Auto-Reset Not Configured";
-      if (detailsEl)
-        detailsEl.textContent = "Set up automatic XP resets below.";
-      if (disableBtn) disableBtn.style.display = "none";
+      // Hide disable button
+      if (disableBtn) {
+        disableBtn.classList.add("d-none");
+      }
+      
+      // Reset enable button
+      if (enableBtn) {
+        enableBtn.innerHTML = '<i class="fas fa-play me-2"></i>Enable Auto-Reset';
+      }
+      
+      // Clear input
+      if (daysInput) {
+        daysInput.value = "";
+        daysInput.placeholder = "e.g., 30 for monthly";
+      }
+
+      console.log("ℹ️ No auto-reset configured");
     }
+
   } catch (error) {
-    console.error("Error loading auto-reset config:", error);
-    if (content) content.style.display = "block";
-    if (loader) loader.style.display = "none";
-
-    if (statusCard) {
-      statusCard.classList.remove("d-none");
-      statusCard.classList.add("alert-secondary");
-      const titleEl = document.getElementById("auto-reset-status-title");
-      const detailsEl = document.getElementById("auto-reset-status-details");
-      if (titleEl) titleEl.textContent = "⚠️ Auto-Reset Not Configured";
-      if (detailsEl)
-        detailsEl.textContent = "Set up automatic XP resets below.";
-    }
+    console.error("❌ Error loading auto-reset config:", error);
+    
+    statusCard.classList.remove("alert-success", "alert-secondary");
+    statusCard.classList.add("alert-danger");
+    
+    statusTitle.innerHTML = `
+      <i class="fas fa-exclamation-circle text-danger me-2"></i>
+      Error Loading Configuration
+    `;
+    
+    statusDetails.innerHTML = `
+      <span class="text-danger">${error.message}</span>
+      <br>
+      <button class="btn btn-sm btn-outline-danger mt-2" onclick="loadAutoResetConfig()">
+        <i class="fas fa-sync me-1"></i>Retry
+      </button>
+    `;
   }
 }
 
@@ -220,11 +290,14 @@ async function enableAutoReset() {
 
   if (!days || days < 1 || days > 365) {
     showToast("Please enter a valid number of days (1-365)", "danger");
+    daysInput.focus();
     return;
   }
 
   const btn = document.getElementById("enable-auto-reset-btn");
+  const originalText = btn.innerHTML;
   btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
 
   try {
     const response = await fetch(`/api/server/${GUILD_ID}/auto-reset`, {
@@ -234,22 +307,34 @@ async function enableAutoReset() {
     });
 
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error);
+    
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to enable auto-reset");
+    }
 
-    showToast(result.message, "success");
-    daysInput.value = "";
-    loadAutoResetConfig();
+    showToast(`✅ Auto-reset enabled! XP will reset every ${days} day${days > 1 ? 's' : ''}.`, "success");
+    
+    // Reload the configuration to show updated status
+    await loadAutoResetConfig();
+
   } catch (error) {
-    showToast(`Error: ${error.message}`, "danger");
+    console.error("Error enabling auto-reset:", error);
+    showToast(`❌ Error: ${error.message}`, "danger");
   } finally {
     btn.disabled = false;
+    btn.innerHTML = originalText;
   }
 }
 
 async function disableAutoReset() {
-  if (!confirm("Are you sure you want to disable automatic XP resets?")) {
+  if (!confirm("Are you sure you want to disable automatic XP resets?\n\nThis will stop the scheduled reset, but won't affect current XP values.")) {
     return;
   }
+
+  const btn = document.getElementById("disable-auto-reset-btn");
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Stopping...';
 
   try {
     const response = await fetch(`/api/server/${GUILD_ID}/auto-reset`, {
@@ -257,17 +342,28 @@ async function disableAutoReset() {
     });
 
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error);
+    
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to disable auto-reset");
+    }
 
-    showToast(result.message, "success");
-    loadAutoResetConfig();
+    showToast("✅ Auto-reset has been disabled.", "success");
+    
+    // Reload the configuration to show updated status
+    await loadAutoResetConfig();
+
   } catch (error) {
-    showToast(`Error: ${error.message}`, "danger");
+    console.error("Error disabling auto-reset:", error);
+    showToast(`❌ Error: ${error.message}`, "danger");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
   }
 }
 
 async function manualResetXP() {
   const btn = document.getElementById("confirm-manual-reset-btn");
+  const originalText = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Resetting...';
 
@@ -277,23 +373,29 @@ async function manualResetXP() {
     });
 
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error);
+    
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to reset XP");
+    }
 
-    showToast(result.message, "success");
+    showToast(`✅ ${result.message}`, "success");
 
     // Close modal
-    const modal = bootstrap.Modal.getInstance(
-      document.getElementById("confirmResetModal")
-    );
+    const modal = bootstrap.Modal.getInstance(document.getElementById("confirmResetModal"));
     if (modal) modal.hide();
 
     // Reload leaderboard to show reset
     loadLeaderboard();
+    
+    // Reload auto-reset config (last_reset timestamp updated)
+    loadAutoResetConfig();
+
   } catch (error) {
-    showToast(`Error: ${error.message}`, "danger");
+    console.error("Error resetting XP:", error);
+    showToast(`❌ Error: ${error.message}`, "danger");
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-check me-2"></i>Yes, Reset Everything';
+    btn.innerHTML = originalText;
   }
 }
 
@@ -453,55 +555,107 @@ async function deleteYtNotification(ytChannelId, ytChannelName) {
 // ==================== EVENT LISTENERS (UNIFIED) ====================
 
 function initializeEventListeners() {
-  // General Settings
-  document
-    .getElementById("general-settings-form")
-    .addEventListener("submit", saveGeneralSettings);
+  // ==================== GENERAL SETTINGS ====================
+  const generalForm = document.getElementById("general-settings-form");
+  if (generalForm) {
+    generalForm.addEventListener("submit", saveGeneralSettings);
+  }
 
-  // Time Channels
-  document
-    .getElementById("time-channels-form")
-    .addEventListener("submit", saveTimeChannels);
+  // ==================== TIME CHANNELS ====================
+  const timeChannelsForm = document.getElementById("time-channels-form");
+  if (timeChannelsForm) {
+    timeChannelsForm.addEventListener("submit", saveTimeChannels);
+  }
 
-  // Leveling Tab
-  document
-    .getElementById("level-reward-form")
-    .addEventListener("submit", saveLevelReward);
-  document
-    .getElementById("save-notify-channel-btn")
-    .addEventListener("click", saveLevelNotifyChannel);
-  document
-    .getElementById("enable-auto-reset-btn")
-    .addEventListener("click", enableAutoReset);
-  document
-    .getElementById("disable-auto-reset-btn")
-    .addEventListener("click", disableAutoReset);
-  document
-    .getElementById("confirm-manual-reset-btn")
-    .addEventListener("click", manualResetXP);
+  // ==================== LEVELING TAB ====================
 
-  let debounceTimer;
-  document
-    .getElementById("leaderboard-search")
-    .addEventListener("input", () => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(loadLeaderboard, 300);
-    });
-  document
-    .getElementById("leaderboard-limit")
-    .addEventListener("change", loadLeaderboard);
-  document
-    .getElementById("auto-reset-days")
-    .addEventListener("keypress", (e) => {
+  // Level reward form
+  const levelRewardForm = document.getElementById("level-reward-form");
+  if (levelRewardForm) {
+    levelRewardForm.addEventListener("submit", saveLevelReward);
+  }
+
+  // Notification channel save button
+  const saveNotifyBtn = document.getElementById("save-notify-channel-btn");
+  if (saveNotifyBtn) {
+    saveNotifyBtn.addEventListener("click", saveLevelNotifyChannel);
+  }
+
+  // ==================== AUTO-RESET SECTION ====================
+
+  // Enable auto-reset button
+  const enableAutoResetBtn = document.getElementById("enable-auto-reset-btn");
+  if (enableAutoResetBtn) {
+    enableAutoResetBtn.addEventListener("click", enableAutoReset);
+    console.log("✅ Enable auto-reset button listener attached");
+  } else {
+    console.warn("⚠️ enable-auto-reset-btn not found");
+  }
+
+  // Disable auto-reset button
+  const disableAutoResetBtn = document.getElementById("disable-auto-reset-btn");
+  if (disableAutoResetBtn) {
+    disableAutoResetBtn.addEventListener("click", disableAutoReset);
+    console.log("✅ Disable auto-reset button listener attached");
+  } else {
+    console.warn("⚠️ disable-auto-reset-btn not found");
+  }
+
+  // Manual reset confirmation button
+  const confirmResetBtn = document.getElementById("confirm-manual-reset-btn");
+  if (confirmResetBtn) {
+    confirmResetBtn.addEventListener("click", manualResetXP);
+    console.log("✅ Manual reset button listener attached");
+  }
+
+  // Auto-reset days input - allow Enter key
+  const autoResetDaysInput = document.getElementById("auto-reset-days");
+  if (autoResetDaysInput) {
+    autoResetDaysInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
         enableAutoReset();
       }
     });
+    console.log("✅ Auto-reset days input listener attached");
+  } else {
+    console.warn("⚠️ auto-reset-days input not found");
+  }
 
-  document
-    .getElementById("level-rewards-list")
-    .addEventListener("click", (e) => {
+  // ==================== TAB CHANGE DETECTION ====================
+
+  // Detect when user switches to the "Settings" sub-tab under Leveling
+  const levelSettingsTab = document.querySelector(
+    'button[data-bs-target="#level-settings"]'
+  );
+  if (levelSettingsTab) {
+    levelSettingsTab.addEventListener("shown.bs.tab", function (e) {
+      console.log("🔄 Level Settings tab shown - reloading auto-reset config");
+      loadAutoResetConfig();
+    });
+  }
+
+  // ==================== LEADERBOARD ====================
+
+  let debounceTimer;
+  const leaderboardSearch = document.getElementById("leaderboard-search");
+  if (leaderboardSearch) {
+    leaderboardSearch.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(loadLeaderboard, 300);
+    });
+  }
+
+  const leaderboardLimit = document.getElementById("leaderboard-limit");
+  if (leaderboardLimit) {
+    leaderboardLimit.addEventListener("change", loadLeaderboard);
+  }
+
+  // ==================== LEVEL REWARDS LIST ====================
+
+  const levelRewardsList = document.getElementById("level-rewards-list");
+  if (levelRewardsList) {
+    levelRewardsList.addEventListener("click", (e) => {
       const editBtn = e.target.closest(".edit-reward-btn");
       if (editBtn) {
         document.getElementById("reward-level").value = editBtn.dataset.level;
@@ -511,6 +665,7 @@ function initializeEventListeners() {
           document.getElementById("addLevelRewardModal")
         ).show();
       }
+
       const deleteBtn = e.target.closest(".delete-reward-btn");
       if (
         deleteBtn &&
@@ -519,59 +674,75 @@ function initializeEventListeners() {
         deleteLevelReward(deleteBtn.dataset.level);
       }
     });
+  }
 
-  document
-    .getElementById("addLevelRewardModal")
-    .addEventListener("hidden.bs.modal", () =>
-      document.getElementById("level-reward-form").reset()
-    );
+  // Reset level reward modal on close
+  const levelRewardModal = document.getElementById("addLevelRewardModal");
+  if (levelRewardModal) {
+    levelRewardModal.addEventListener("hidden.bs.modal", () => {
+      document.getElementById("level-reward-form").reset();
+    });
+  }
 
-  // YouTube Tab
-  document
-    .getElementById("add-yt-notification-btn")
-    .addEventListener("click", () => {
+  // ==================== YOUTUBE TAB ====================
+
+  const addYtBtn = document.getElementById("add-yt-notification-btn");
+  if (addYtBtn) {
+    addYtBtn.addEventListener("click", () => {
       const form = document.getElementById("yt-notification-form");
       form.reset();
       document.getElementById("yt-custom-message").value =
         "🔔 {@role} **{channel_name}** has uploaded a new video!\n\n**{video_title}**\n{video_url}";
+
       const statusEl = document.getElementById("yt-channel-finder-status");
       statusEl.innerHTML = 'Enter a @handle or channel URL and click "Find".';
       statusEl.className = "form-text";
       statusEl.dataset.channelId = "";
       statusEl.dataset.channelName = "";
+
       document.getElementById("yt-discord-channel-select").value = "";
       document.getElementById("yt-mention-role-select").value = "";
+
       new bootstrap.Modal(
         document.getElementById("addYtNotificationModal")
       ).show();
     });
+  }
 
-  document
-    .getElementById("yt-notification-form")
-    .addEventListener("submit", saveYtNotification);
+  const ytNotificationForm = document.getElementById("yt-notification-form");
+  if (ytNotificationForm) {
+    ytNotificationForm.addEventListener("submit", saveYtNotification);
+  }
 
-  document
-    .getElementById("youtube-configs-container")
-    .addEventListener("click", (e) => {
+  // YouTube configs container (edit/delete buttons)
+  const ytConfigsContainer = document.getElementById(
+    "youtube-configs-container"
+  );
+  if (ytConfigsContainer) {
+    ytConfigsContainer.addEventListener("click", (e) => {
       const editBtn = e.target.closest(".edit-yt-btn");
       if (editBtn) {
         const config = JSON.parse(editBtn.dataset.config);
         document.getElementById("yt-channel-input").value =
           config.yt_channel_name;
+
         const statusEl = document.getElementById("yt-channel-finder-status");
         statusEl.innerHTML = `✅ Found: <strong>${config.yt_channel_name}</strong> (ID: ${config.yt_channel_id})`;
         statusEl.dataset.channelId = config.yt_channel_id;
         statusEl.dataset.channelName = config.yt_channel_name;
+
         document.getElementById("yt-discord-channel-select").value =
           config.target_channel_id;
         document.getElementById("yt-mention-role-select").value =
           config.mention_role_id || "";
         document.getElementById("yt-custom-message").value =
           config.custom_message;
+
         new bootstrap.Modal(
           document.getElementById("addYtNotificationModal")
         ).show();
       }
+
       const deleteBtn = e.target.closest(".delete-yt-btn");
       if (deleteBtn) {
         deleteYtNotification(
@@ -580,83 +751,78 @@ function initializeEventListeners() {
         );
       }
     });
+  }
 
-  document
-    .getElementById("find-yt-channel-btn")
-    .addEventListener("click", async () => {
-      const btn = document.getElementById("find-yt-channel-btn");
-      const input = document.getElementById("yt-channel-input");
-      const statusEl = document.getElementById("yt-channel-finder-status");
-      const query = input.value;
+  // YouTube channel finder button
+  const findYtBtn = document.getElementById("find-yt-channel-btn");
+  if (findYtBtn) {
+    findYtBtn.addEventListener("click", findYouTubeChannel);
+  }
 
-      if (!query) {
-        statusEl.textContent = "Please enter a channel @handle or URL.";
-        statusEl.className = "form-text text-danger";
-        return;
-      }
+  // ==================== MAIN DASHBOARD REFRESH ====================
 
-      const originalBtnHTML = btn.innerHTML;
-      btn.innerHTML =
-        '<span class="spinner-border spinner-border-sm"></span> Finding...';
-      btn.disabled = true;
-      statusEl.textContent = "Searching...";
-      statusEl.className = "form-text text-muted";
-      statusEl.dataset.channelId = "";
-      statusEl.dataset.channelName = "";
-
-      try {
-        const response = await fetch(
-          `/api/youtube/find-channel?query=${encodeURIComponent(query)}`
-        );
-        const data = await response.json();
-        if (!response.ok)
-          throw new Error(data.error || "Failed to find channel.");
-
-        statusEl.innerHTML = `✅ Found: <strong>${data.channel_name}</strong> (ID: ${data.channel_id})`;
-        statusEl.className = "form-text text-success";
-        statusEl.dataset.channelId = data.channel_id;
-        statusEl.dataset.channelName = data.channel_name;
-        input.value = data.channel_name;
-      } catch (error) {
-        statusEl.textContent = `❌ Error: ${error.message}`;
-        statusEl.className = "form-text text-danger";
-      } finally {
-        btn.innerHTML = originalBtnHTML;
-        btn.disabled = false;
-      }
-    });
-
-  // Main dashboard refresh button
   const refreshBtn = document.getElementById("refresh-dashboard-btn");
   if (refreshBtn) {
     refreshBtn.addEventListener("click", function () {
       showToast("Refreshing all server data...", "info");
 
       const icon = refreshBtn.querySelector("i");
-      icon.classList.add("fa-spin"); // Add spin animation
+      if (icon) icon.classList.add("fa-spin");
       refreshBtn.disabled = true;
 
       loadDashboardData().finally(() => {
-        // Remove spin animation after a short delay
         setTimeout(() => {
-          icon.classList.remove("fa-spin");
+          if (icon) icon.classList.remove("fa-spin");
           refreshBtn.disabled = false;
         }, 1000);
       });
     });
   }
 
-  // Channel Restrictions
-  const restrictionsContainer = document.getElementById(
-    "channel-restrictions-container"
-  );
-  if (restrictionsContainer) {
-    restrictionsContainer.addEventListener("change", (e) => {
-      if (e.target.classList.contains("restriction-toggle")) {
-        const channelId = e.target.closest(".card").dataset.channelId;
-        saveChannelRestriction(channelId);
-      }
-    });
+  console.log("✅ All event listeners initialized");
+}
+
+// YouTube channel finder function (if not already defined)
+async function findYouTubeChannel() {
+  const btn = document.getElementById("find-yt-channel-btn");
+  const input = document.getElementById("yt-channel-input");
+  const statusEl = document.getElementById("yt-channel-finder-status");
+  const query = input.value.trim();
+
+  if (!query) {
+    statusEl.textContent = "Please enter a channel @handle or URL.";
+    statusEl.className = "form-text text-danger";
+    return;
+  }
+
+  const originalBtnHTML = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Finding...';
+  btn.disabled = true;
+  statusEl.textContent = "Searching...";
+  statusEl.className = "form-text text-muted";
+  statusEl.dataset.channelId = "";
+  statusEl.dataset.channelName = "";
+
+  try {
+    const response = await fetch(`/api/youtube/find-channel?query=${encodeURIComponent(query)}`);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to find channel.");
+    }
+
+    statusEl.innerHTML = `✅ Found: <strong>${data.channel_name}</strong> (ID: ${data.channel_id})`;
+    statusEl.className = "form-text text-success";
+    statusEl.dataset.channelId = data.channel_id;
+    statusEl.dataset.channelName = data.channel_name;
+    input.value = data.channel_name;
+    
+  } catch (error) {
+    statusEl.textContent = `❌ Error: ${error.message}`;
+    statusEl.className = "form-text text-danger";
+  } finally {
+    btn.innerHTML = originalBtnHTML;
+    btn.disabled = false;
   }
 }
 

@@ -1,5 +1,5 @@
 
-# Discord Bot Dependencies
+#Discord Bot Dependencies
 discord.py>=2.3.0
 python-dotenv>=1.0.0
 pytz>=2023.3
@@ -10,18 +10,18 @@ asyncpg>=0.29.0
 feedparser>=6.0.10
 aiohttp>=3.9.0
 
-# Flask Frontend Dependencies
+#Flask Frontend Dependencies
 Flask>=3.0.0
 Flask-Cors>=4.0.0
 Werkzeug>=3.0.0
 
-# ✨ NEW: Dashboard Authentication
+#Dashboard Authentication
 Flask-Login>=0.6.3
 requests>=2.31.0
 requests-oauthlib>=1.3.1
 
-# CRITICAL FIX: Synchronous PostgreSQL for Flask (no event loop issues)
+#Synchronous PostgreSQL for Flask
 psycopg2-binary>=2.9.9
 
-# Production Server
+#Production Server
 gunicorn>=21.2.0

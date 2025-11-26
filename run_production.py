@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 PRODUCTION RUNNER
 Python-only entry point that runs both Discord Bot and Flask Frontend
@@ -15,7 +14,7 @@ BASE_DIR = Path(__file__).parent.resolve()
 PYTHON_FILES_DIR = BASE_DIR / "Python_Files"
 FLASK_DIR = BASE_DIR / "Flask_Frontend"
 
-# Add to Python path BEFORE any imports
+# Add to Python path
 sys.path.insert(0, str(PYTHON_FILES_DIR))
 sys.path.insert(0, str(FLASK_DIR))
 
@@ -27,9 +26,9 @@ SERVER_DOMAIN = os.getenv("SERVER_DOMAIN", "http://localhost") # Use actual doma
 
 def run_discord_bot():
     """Run the Discord bot in a separate process"""
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 20)
     print("🤖 STARTING DISCORD BOT (PRODUCTION)")
-    print("=" * 60 + "\n")
+    print("=" * 20 + "\n")
 
     try:
         # Import after path is set
@@ -47,15 +46,14 @@ def run_discord_bot():
 
 def run_flask_frontend():
     """Run the Flask frontend in a separate process"""
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 20)
     print("🌐 STARTING FLASK FRONTEND (PRODUCTION)")
-    print("=" * 60)
+    print("=" * 20)
     print(f"📍 Server IP: {SERVER_IP}")
     print(f"🔌 Port: {SERVER_PORT}")
     print(f"🌍 Domain: {SERVER_DOMAIN}")
-    print("=" * 60 + "\n")
+    print("=" * 20 + "\n")
 
-    # Small delay to let Discord bot start first
     time.sleep(2)
 
     try:
@@ -74,14 +72,14 @@ def run_flask_frontend():
 
 def main():
     """Main function to start both services in production mode"""
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 20)
     print("🚀 SUPPORTER BOT - PRODUCTION DEPLOYMENT")
-    print("=" * 60)
+    print("=" * 20)
     print("\n📦 Server Configuration:")
     print(f"   • IP Address: {SERVER_IP}")
     print(f"   • Port: {SERVER_PORT}")
     print(f"   • Domain: {SERVER_DOMAIN}")
-    print("   • Environment: Production")
+    print("    • Environment: Production")
     print("\n🔄 Starting both Discord Bot and Flask Frontend...")
     print("⌨️  Press Ctrl+C to stop all services\n")
 
@@ -105,13 +103,12 @@ def main():
     )
 
     try:
-        # Start both processes
         discord_process.start()
         flask_process.start()
 
-        print("\n" + "=" * 60)
+        print("\n" + "=" * 20)
         print("✅ BOTH SERVICES STARTED SUCCESSFULLY!")
-        print("=" * 60)
+        print("=" * 20)
         print("\n🤖 Discord Bot: Running")
         print(f"🌐 Flask Frontend: https://{SERVER_IP}:{SERVER_PORT}")
         print(f"🌍 Public Domain: {SERVER_DOMAIN}")
@@ -123,9 +120,9 @@ def main():
         flask_process.join()
 
     except KeyboardInterrupt:
-        print("\n\n" + "=" * 60)
+        print("\n\n" + "=" * 20)
         print("🛑 SHUTTING DOWN ALL SERVICES...")
-        print("=" * 60)
+        print("=" * 20)
 
         # Terminate both processes gracefully
         if discord_process.is_alive():
@@ -145,7 +142,7 @@ def main():
                 flask_process.kill()
 
         print("\n✅ All services stopped successfully!")
-        print("=" * 60 + "\n")
+        print("=" * 20 + "\n")
 
     except Exception as e:
         print(f"\n❌ CRITICAL ERROR: {e}")
@@ -172,11 +169,10 @@ def main():
 
 
 if __name__ == "__main__":
-    # Required for Windows multiprocessing
     multiprocessing.freeze_support()
 
-    print("=" * 60)
+    print("=" * 20)
     print("🎯 PRODUCTION MODE ACTIVATED")
-    print("=" * 60)
+    print("=" * 20)
 
     main()
