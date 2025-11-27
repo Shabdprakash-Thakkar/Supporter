@@ -180,21 +180,42 @@ class YouTubeManager:
 
     @tasks.loop(minutes=15)
     async def check_for_videos(self):
-        log.info("Running YouTube RSS notification check...")
+        """
+        Check for new YouTube videos every 15 minutes.
+        
+        Logic:
+        1. Fetch enabled configurations
+        2. For each config, fetch RSS feed
+        3. Check each video:
+        - If already logged: Skip
+        - If older than 60 minutes: Log as 'none', no notification
+        - If newer than 60 minutes: Send notification, log as 'notified'
+        """
+        log.info("🔍 Running YouTube RSS notification check...")
+        
         configs = await self.pool.fetch(
             "SELECT * FROM public.youtube_notification_config WHERE is_enabled = TRUE"
         )
+        
         if not configs:
+            log.info("ℹ️ No active YouTube notification configs found")
             return
+
+        log.info(f"📊 Checking {len(configs)} YouTube notification config(s)")
 
         for config in configs:
             guild_id_str = config["guild_id"]
             yt_channel_id = config["yt_channel_id"]
+            yt_channel_name = config.get("yt_channel_name", "Unknown Channel")
+            
             try:
+                # Fetch RSS feed
                 feed = await self.fetch_rss_feed(yt_channel_id)
                 if not feed or not feed.entries:
+                    log.debug(f"No entries in RSS feed for channel {yt_channel_id}")
                     continue
 
+                # Process each video entry
                 for entry in feed.entries:
                     video_info = self.extract_video_info(entry)
                     if not video_info:
@@ -202,8 +223,13 @@ class YouTubeManager:
 
                     video_id = video_info["video_id"]
                     published_at = video_info["published_at"]
-                    age_seconds = (datetime.now(IST) - published_at.astimezone(IST)).total_seconds()
+                    
+                    # Calculate age
+                    age_seconds = (
+                        datetime.now(IST) - published_at.astimezone(IST)
+                    ).total_seconds()
 
+                    # Check if already logged
                     log_exists = await self.pool.fetchval(
                         "SELECT 1 FROM public.youtube_notification_logs WHERE guild_id = $1 AND yt_channel_id = $2 AND video_id = $3",
                         guild_id_str,
@@ -212,48 +238,65 @@ class YouTubeManager:
                     )
 
                     if log_exists:
-                        continue
+                        continue  # Already processed
 
+                    # Handle based on age (60 minute threshold)
                     if age_seconds > 3600:
+                        # Video is old, skip notification
                         log.info(
-                            f"📦 Skipping old video ({age_seconds/3600:.2f} days old): {video_id} for guild {guild_id_str}"
+                            f"📦 Skipping old video ({age_seconds/3600:.2f} hours old): "
+                            f"{video_id} for guild {guild_id_str}"
                         )
                         await self.pool.execute(
-                            "INSERT INTO public.youtube_notification_logs (guild_id, yt_channel_id, video_id, video_status) VALUES ($1, $2, $3, 'none') ON CONFLICT DO NOTHING",
+                            """INSERT INTO public.youtube_notification_logs 
+                            (guild_id, yt_channel_id, video_id, video_status) 
+                            VALUES ($1, $2, $3, 'none') 
+                            ON CONFLICT DO NOTHING""",
                             guild_id_str,
                             yt_channel_id,
                             video_id,
                         )
-                        continue
+                    else:
+                        # Video is new, send notification
+                        log.info(
+                            f"🆕 New video detected for guild {guild_id_str} on channel {yt_channel_name}: "
+                            f"{video_info['title']} (published {age_seconds/60:.1f} minutes ago)"
+                        )
 
-                    log.info(
-                        f"🆕 New video detected for guild {guild_id_str} on channel {yt_channel_id}: {video_id} (published {age_seconds/3600:.2f} days ago)"
-                    )
+                        # Send notification
+                        await self.send_notification(config, video_info)
 
-                    await self.send_notification(config, video_info)
+                        # Log as notified
+                        await self.pool.execute(
+                            """INSERT INTO public.youtube_notification_logs 
+                            (guild_id, yt_channel_id, video_id, video_status) 
+                            VALUES ($1, $2, $3, 'notified') 
+                            ON CONFLICT DO NOTHING""",
+                            guild_id_str,
+                            yt_channel_id,
+                            video_id,
+                        )
 
-                    await self.pool.execute(
-                        "INSERT INTO public.youtube_notification_logs (guild_id, yt_channel_id, video_id, video_status) VALUES ($1, $2, $3, 'notified') ON CONFLICT DO NOTHING",
-                        guild_id_str,
-                        yt_channel_id,
-                        video_id,
-                    )
-
-                    await asyncio.sleep(2)
+                    # Brief delay to avoid rate limits
+                    await asyncio.sleep(0.5)
 
             except Exception as e:
                 log.error(
-                    f"Unexpected error processing YouTube channel {yt_channel_id}: {e}",
+                    f"❌ Error processing YouTube channel {yt_channel_id} for guild {guild_id_str}: {e}",
                     exc_info=True,
                 )
 
+
     async def send_notification(self, config: dict, video_info: dict):
+        """Send YouTube notification to Discord channel"""
         guild = self.bot.get_guild(int(config["guild_id"]))
         if not guild:
+            log.warning(f"Guild {config['guild_id']} not found")
             return
 
         channel = self.bot.get_channel(int(config["target_channel_id"]))
         if not channel:
+            log.warning(f"Channel {config['target_channel_id']} not found in guild {guild.id}")
             return
 
         role = (
@@ -262,12 +305,13 @@ class YouTubeManager:
             else None
         )
 
+        # Get custom message or use default
         message_template = config.get(
             "custom_message",
-            "**{channel_name}** uploaded: **{video_title}**\n{video_url}",
+            "🔔 {@role} **{channel_name}** has uploaded a new video!\n\n**{video_title}**\n{video_url}",
         )
 
-
+        # Replace placeholders
         message = message_template.replace("{channel_name}", video_info["channel_name"])
         message = message.replace("{video_title}", video_info["title"])
         message = message.replace("{video_url}", video_info["link"])
@@ -278,23 +322,23 @@ class YouTubeManager:
             message = message.replace("{@role}", role.mention)
         else:
             message = message.replace("{@role} ", "")
-            message = message.replace(
-                "{@role}", ""
-            ) 
+            message = message.replace("{@role}", "")
 
         message = message.replace("  ", " ").strip()
 
         try:
             await channel.send(message, allowed_mentions=discord.AllowedMentions.all())
             log.info(
-                f"✅ Sent notification for video {video_info['video_id']} to guild {config['guild_id']}"
+                f"✅ Sent notification for video {video_info['video_id']} "
+                f"to guild {config['guild_id']} in channel {channel.name}"
             )
         except discord.Forbidden:
             log.warning(
-                f"Missing permissions to send YouTube notification in channel {channel.id}"
+                f"⚠️ Missing permissions to send YouTube notification in channel {channel.id} "
+                f"of guild {guild.id}"
             )
         except Exception as e:
-            log.error(f"Failed to send YouTube notification: {e}")
+            log.error(f"❌ Failed to send YouTube notification: {e}", exc_info=True)
 
     @check_for_videos.before_loop
     async def before_check_for_videos(self):
@@ -453,6 +497,15 @@ class YouTubeManager:
                     "Please check the logs or try again."
                 )
 
+        """
+        Enhanced YouTube Notification Manager with consistent seeding logic
+        Key changes:
+        1. Unified seeding logic for both slash commands and dashboard
+        2. Default message template matches dashboard
+        3. Consistent 60-minute age threshold
+        4. Better error handling and logging
+        """
+
         @self.bot.tree.command(
             name="y2-setup-youtube-notifications",
             description="Set up notifications for a YouTube channel.",
@@ -465,12 +518,15 @@ class YouTubeManager:
             role_to_mention: discord.Role,
         ):
             await interaction.response.defer(ephemeral=True)
+            
             if not youtube_channel_id.startswith("UC"):
                 await interaction.followup.send(
                     "❌ That is not a valid YouTube Channel ID. It must start with `UC`.\nUse `/y1-find-youtube-channel-id` to find it."
                 )
                 return
+            
             try:
+                # Verify channel via RSS feed
                 feed = await self.fetch_rss_feed(youtube_channel_id)
                 if not feed or not feed.feed:
                     await interaction.followup.send(
@@ -481,6 +537,7 @@ class YouTubeManager:
                 channel_name = feed.feed.get("title", "Unknown Channel")
                 guild_id = str(interaction.guild_id)
 
+                # Check if this is a new setup or update
                 existing = await self.pool.fetchrow(
                     "SELECT * FROM public.youtube_notification_config WHERE guild_id = $1 AND yt_channel_id = $2",
                     guild_id,
@@ -489,9 +546,22 @@ class YouTubeManager:
 
                 is_new_setup = not existing
 
+                # Default message template (matches dashboard)
+                default_message = (
+                    "🔔 {@role} **{channel_name}** has uploaded a new video!\n\n"
+                    "**{video_title}**\n{video_url}"
+                )
+
                 if existing:
+                    # Update existing configuration
                     await self.pool.execute(
-                        "UPDATE public.youtube_notification_config SET target_channel_id = $1, mention_role_id = $2, is_enabled = TRUE, yt_channel_name = $5 WHERE guild_id = $3 AND yt_channel_id = $4",
+                        """UPDATE public.youtube_notification_config 
+                        SET target_channel_id = $1, 
+                            mention_role_id = $2, 
+                            is_enabled = TRUE, 
+                            yt_channel_name = $5,
+                            updated_at = NOW()
+                        WHERE guild_id = $3 AND yt_channel_id = $4""",
                         str(notification_channel.id),
                         str(role_to_mention.id),
                         guild_id,
@@ -499,16 +569,22 @@ class YouTubeManager:
                         channel_name,
                     )
                     await interaction.followup.send(
-                        f"✅ Updated YouTube notifications for **{channel_name}**.\nNotifications will be posted in {notification_channel.mention} with {role_to_mention.mention}."
+                        f"✅ Updated YouTube notifications for **{channel_name}**.\n"
+                        f"Notifications will be posted in {notification_channel.mention} with {role_to_mention.mention}."
                     )
                 else:
+                    # Insert new configuration
                     await self.pool.execute(
-                        "INSERT INTO public.youtube_notification_config (guild_id, yt_channel_id, target_channel_id, mention_role_id, is_enabled, yt_channel_name) VALUES ($1, $2, $3, $4, TRUE, $5)",
+                        """INSERT INTO public.youtube_notification_config 
+                        (guild_id, yt_channel_id, target_channel_id, mention_role_id, 
+                            is_enabled, yt_channel_name, custom_message) 
+                        VALUES ($1, $2, $3, $4, TRUE, $5, $6)""",
                         guild_id,
                         youtube_channel_id,
                         str(notification_channel.id),
                         str(role_to_mention.id),
                         channel_name,
+                        default_message,
                     )
 
                     await interaction.followup.send(
@@ -517,22 +593,26 @@ class YouTubeManager:
                         f"🔄 Seeding recent videos to prevent old notifications..."
                     )
 
+                    # Seed recent videos (same logic as dashboard)
                     seeded_count = 0
                     notified_new = 0
                     skipped_old = 0
                     
                     if feed and feed.entries:
-                        for entry in feed.entries:
+                        for entry in feed.entries[:15]:  # Process only latest 15 videos
                             video_info = self.extract_video_info(entry)
                             if not video_info:
                                 continue
 
                             video_id = video_info["video_id"]
                             published_at = video_info["published_at"]
+                            
+                            # Calculate age in seconds
                             age_seconds = (
                                 datetime.now(IST) - published_at.astimezone(IST)
                             ).total_seconds()
 
+                            # Check if already logged
                             exists = await self.pool.fetchval(
                                 "SELECT 1 FROM public.youtube_notification_logs WHERE guild_id = $1 AND yt_channel_id = $2 AND video_id = $3",
                                 guild_id,
@@ -543,15 +623,20 @@ class YouTubeManager:
                             if exists:
                                 continue
 
-                            if age_seconds > 3600:
+                            # Determine status based on age (60 minute threshold)
+                            if age_seconds > 3600:  # Older than 60 minutes
                                 status = "none"
                                 skipped_old += 1
-                            else:
+                            else:  # Newer than 60 minutes
                                 status = "seeded"
                                 notified_new += 1
 
+                            # Insert into logs
                             await self.pool.execute(
-                                "INSERT INTO public.youtube_notification_logs (guild_id, yt_channel_id, video_id, video_status) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
+                                """INSERT INTO public.youtube_notification_logs 
+                                (guild_id, yt_channel_id, video_id, video_status) 
+                                VALUES ($1, $2, $3, $4) 
+                                ON CONFLICT DO NOTHING""",
                                 guild_id,
                                 youtube_channel_id,
                                 video_id,
@@ -561,9 +646,10 @@ class YouTubeManager:
 
                         log.info(
                             f"✅ Seeded {seeded_count} videos for guild {guild_id}, channel {youtube_channel_id} "
-                            f"({skipped_old} old, {notified_new} recent but not notified during setup)"
+                            f"({skipped_old} old, {notified_new} recent)"
                         )
 
+                        # Send seeding summary to the channel
                         await interaction.channel.send(
                             f"✅ **Seeding Complete!** Processed {seeded_count} videos:\n"
                             f"• {skipped_old} old videos marked (no notification)\n"
@@ -577,6 +663,7 @@ class YouTubeManager:
                 await interaction.followup.send(
                     f"❌ An error occurred while setting up notifications: {str(e)[:200]}"
                 )
+
 
         @self.bot.tree.command(
             name="y3-disable-youtube-notifications",

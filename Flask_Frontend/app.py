@@ -19,7 +19,7 @@ import logging
 import psycopg2
 import feedparser
 from psycopg2 import pool
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import requests
 from requests_oauthlib import OAuth2Session
 
@@ -1127,21 +1127,43 @@ def delete_channel_restriction_v2(guild_id, restriction_id):
 @app.route("/api/server/<guild_id>/youtube-configs", methods=["POST"])
 @login_required
 def save_youtube_config(guild_id):
-    """Add or update a YouTube notification configuration."""
+    """
+    Add or update a YouTube notification configuration.
+    Automatically seeds recent videos on first setup to prevent old notifications.
+    """
     if not user_has_access(current_user.id, guild_id):
         return jsonify({"error": "Access denied"}), 403
 
     data = request.get_json()
-    if not all(
-        k in data for k in ["yt_channel_id", "target_channel_id", "custom_message"]
-    ):
+    
+    # Validate required fields
+    required_fields = ["yt_channel_id", "yt_channel_name", "target_channel_id", "custom_message"]
+    if not all(k in data for k in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
+    yt_channel_id = data["yt_channel_id"]
+    yt_channel_name = data["yt_channel_name"]
+    target_channel_id = data["target_channel_id"]
+    mention_role_id = data.get("mention_role_id") or None
+    custom_message = data["custom_message"]
+
     pool = init_db_pool()
+    if not pool:
+        return jsonify({"error": "Database error"}), 500
+
     conn = None
     try:
         conn = pool.getconn()
         cursor = conn.cursor()
+
+        # Check if this is a new setup or update
+        cursor.execute(
+            "SELECT 1 FROM public.youtube_notification_config WHERE guild_id = %s AND yt_channel_id = %s",
+            (guild_id, yt_channel_id),
+        )
+        is_new_setup = cursor.fetchone() is None
+
+        # Insert or update configuration
         query = """
             INSERT INTO public.youtube_notification_config 
                 (guild_id, yt_channel_id, yt_channel_name, target_channel_id, mention_role_id, custom_message, is_enabled)
@@ -1152,18 +1174,11 @@ def save_youtube_config(guild_id):
                 mention_role_id = EXCLUDED.mention_role_id,
                 custom_message = EXCLUDED.custom_message,
                 is_enabled = TRUE,
-                updated_at = NOW();
+                updated_at = NOW()
         """
         cursor.execute(
             query,
-            (
-                guild_id,
-                data["yt_channel_id"],
-                data["yt_channel_name"],
-                data["target_channel_id"],
-                data.get("mention_role_id") or None,
-                data["custom_message"],
-            ),
+            (guild_id, yt_channel_id, yt_channel_name, target_channel_id, mention_role_id, custom_message),
         )
         conn.commit()
 
@@ -1171,13 +1186,30 @@ def save_youtube_config(guild_id):
             current_user.id,
             guild_id,
             "youtube_config_save",
-            f"Saved config for YouTube channel: {data['yt_channel_name']}",
+            f"{'Created' if is_new_setup else 'Updated'} config for YouTube channel: {yt_channel_name}",
             request.remote_addr,
         )
         increment_command_counter()
-        return jsonify({"success": True, "message": "YouTube notification saved!"})
+
+        # If this is a new setup, seed recent videos from RSS feed
+        seeding_result = None
+        if is_new_setup:
+            log.info(f"🆕 New YouTube config for guild {guild_id}, channel {yt_channel_id} - starting seeding...")
+            seeding_result = seed_youtube_videos(guild_id, yt_channel_id, yt_channel_name)
+
+        response_data = {
+            "success": True,
+            "message": f"YouTube notification {'created' if is_new_setup else 'updated'} for {yt_channel_name}!",
+            "is_new_setup": is_new_setup
+        }
+
+        if seeding_result:
+            response_data["seeding"] = seeding_result
+
+        return jsonify(response_data)
+
     except Exception as e:
-        log.error(f"Error saving YouTube config for guild {guild_id}: {e}")
+        log.error(f"Error saving YouTube config for guild {guild_id}: {e}", exc_info=True)
         if conn:
             conn.rollback()
         return jsonify({"error": "Failed to save configuration"}), 500
@@ -1186,6 +1218,151 @@ def save_youtube_config(guild_id):
             cursor.close()
             pool.putconn(conn)
 
+def seed_youtube_videos(guild_id, yt_channel_id, yt_channel_name):
+    """
+    Seed recent YouTube videos from RSS feed on first-time setup.
+    
+    Logic:
+    1. Fetch latest 15 videos from RSS feed
+    2. For each video:
+       - If older than 60 minutes: Mark as 'none' (skip notification)
+       - If newer than 60 minutes: Mark as 'seeded' (will notify on next new upload)
+    3. Return statistics about seeding process
+    
+    Returns:
+        dict: Statistics about seeded videos
+    """
+    try:
+        # Fetch RSS feed
+        rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={yt_channel_id}"
+        response = requests.get(rss_url, timeout=10)
+        
+        if response.status_code != 200:
+            log.error(f"RSS feed returned status {response.status_code} for channel {yt_channel_id}")
+            return {
+                "error": f"Failed to fetch RSS feed (HTTP {response.status_code})",
+                "total_seeded": 0,
+                "skipped_old": 0,
+                "recent_videos": 0
+            }
+
+        # Parse RSS feed
+        feed = feedparser.parse(response.text)
+        
+        if not feed or not feed.entries:
+            log.warning(f"No entries found in RSS feed for channel {yt_channel_id}")
+            return {
+                "error": "No videos found in RSS feed",
+                "total_seeded": 0,
+                "skipped_old": 0,
+                "recent_videos": 0
+            }
+
+        pool = init_db_pool()
+        if not pool:
+            return {
+                "error": "Database connection failed",
+                "total_seeded": 0,
+                "skipped_old": 0,
+                "recent_videos": 0
+            }
+
+        conn = None
+        total_seeded = 0
+        skipped_old = 0
+        recent_videos = 0
+
+        try:
+            conn = pool.getconn()
+            cursor = conn.cursor()
+
+            for entry in feed.entries[:15]:  # Process only latest 15 videos
+                try:
+                    # Extract video info
+                    video_id = entry.get("yt_videoid")
+                    published_str = entry.get("published")
+                    
+                    if not video_id or not published_str:
+                        continue
+
+                    # Parse published date
+                    published_at = datetime.strptime(published_str, "%Y-%m-%dT%H:%M:%S%z")
+                    
+                    # Calculate age in seconds
+                    now = datetime.now(timezone.utc)
+                    age_seconds = (now - published_at).total_seconds()
+
+                    # Check if video already exists in logs
+                    cursor.execute(
+                        "SELECT 1 FROM public.youtube_notification_logs WHERE guild_id = %s AND yt_channel_id = %s AND video_id = %s",
+                        (guild_id, yt_channel_id, video_id),
+                    )
+                    
+                    if cursor.fetchone():
+                        continue  # Skip if already logged
+
+                    # Determine video status based on age
+                    if age_seconds > 3600:  # Older than 60 minutes
+                        video_status = "none"  # Don't notify
+                        skipped_old += 1
+                    else:  # Newer than 60 minutes
+                        video_status = "seeded"  # Will trigger notification on next new upload
+                        recent_videos += 1
+
+                    # Insert into logs
+                    cursor.execute(
+                        """
+                        INSERT INTO public.youtube_notification_logs 
+                            (guild_id, yt_channel_id, video_id, video_status) 
+                        VALUES (%s, %s, %s, %s) 
+                        ON CONFLICT DO NOTHING
+                        """,
+                        (guild_id, yt_channel_id, video_id, video_status),
+                    )
+                    total_seeded += 1
+
+                except Exception as e:
+                    log.error(f"Error processing video entry during seeding: {e}")
+                    continue
+
+            conn.commit()
+            cursor.close()
+
+            log.info(
+                f"✅ Seeded {total_seeded} videos for guild {guild_id}, channel {yt_channel_name} "
+                f"({skipped_old} old, {recent_videos} recent)"
+            )
+
+            return {
+                "success": True,
+                "total_seeded": total_seeded,
+                "skipped_old": skipped_old,
+                "recent_videos": recent_videos,
+                "message": f"Seeded {total_seeded} videos: {skipped_old} old (no notification), {recent_videos} recent (will notify on next upload)"
+            }
+
+        except Exception as e:
+            log.error(f"Error during video seeding: {e}", exc_info=True)
+            if conn:
+                conn.rollback()
+            return {
+                "error": f"Seeding failed: {str(e)}",
+                "total_seeded": 0,
+                "skipped_old": 0,
+                "recent_videos": 0
+            }
+        finally:
+            if conn and pool:
+                pool.putconn(conn)
+
+    except Exception as e:
+        log.error(f"Error fetching RSS feed for seeding: {e}", exc_info=True)
+        return {
+            "error": f"Failed to fetch RSS feed: {str(e)}",
+            "total_seeded": 0,
+            "skipped_old": 0,
+            "recent_videos": 0
+        }
 
 @app.route("/api/server/<guild_id>/youtube-configs", methods=["DELETE"])
 @login_required

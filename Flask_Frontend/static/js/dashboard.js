@@ -485,23 +485,42 @@ function populateYouTubeTab(config, discordData) {
 async function saveYtNotification(event) {
   event.preventDefault();
   const btn = document.getElementById("save-yt-notification-btn");
+  const originalBtnText = btn.innerHTML;
   btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
 
   const channelInfo = document.getElementById(
     "yt-channel-finder-status"
   ).dataset;
+
   const data = {
     yt_channel_id: channelInfo.channelId,
     yt_channel_name: channelInfo.channelName,
     target_channel_id: document.getElementById("yt-discord-channel-select")
       .value,
-    mention_role_id: document.getElementById("yt-mention-role-select").value,
+    mention_role_id:
+      document.getElementById("yt-mention-role-select").value || null,
     custom_message: document.getElementById("yt-custom-message").value,
   };
 
-  if (!data.yt_channel_id) {
+  if (!data.yt_channel_id || !data.yt_channel_name) {
     showToast("Please find and verify a YouTube channel first.", "danger");
     btn.disabled = false;
+    btn.innerHTML = originalBtnText;
+    return;
+  }
+
+  if (!data.target_channel_id) {
+    showToast("Please select a Discord channel for notifications.", "danger");
+    btn.disabled = false;
+    btn.innerHTML = originalBtnText;
+    return;
+  }
+
+  if (!data.custom_message || data.custom_message.trim() === "") {
+    showToast("Please enter a custom notification message.", "danger");
+    btn.disabled = false;
+    btn.innerHTML = originalBtnText;
     return;
   }
 
@@ -511,18 +530,64 @@ async function saveYtNotification(event) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error);
 
-    showToast("YouTube notification saved!", "success");
-    bootstrap.Modal.getInstance(
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to save configuration");
+    }
+
+    // Handle successful save
+    console.log("✅ YouTube notification saved:", result);
+
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(
       document.getElementById("addYtNotificationModal")
-    ).hide();
+    );
+    if (modal) {
+      modal.hide();
+    }
+
+    // Show success message with seeding info
+    if (result.is_new_setup && result.seeding) {
+      const seedingInfo = result.seeding;
+
+      if (seedingInfo.success) {
+        showToast(
+          `✅ YouTube notification created for ${data.yt_channel_name}!\n\n` +
+            `📦 Seeded ${seedingInfo.total_seeded} videos:\n` +
+            `• ${seedingInfo.skipped_old} old videos (no notification)\n` +
+            `• ${seedingInfo.recent_videos} recent videos (will notify on next upload)`,
+          "success",
+          8000 // Show for 8 seconds
+        );
+      } else {
+        // Seeding failed but config was saved
+        showToast(
+          `✅ YouTube notification created for ${data.yt_channel_name}!\n\n` +
+            `⚠️ Video seeding failed: ${seedingInfo.error}\n` +
+            `Notifications will still work for new uploads.`,
+          "warning",
+          8000
+        );
+      }
+    } else {
+      showToast(
+        `✅ YouTube notification ${
+          result.is_new_setup ? "created" : "updated"
+        } successfully!`,
+        "success"
+      );
+    }
+
+    // Reload YouTube configs
     loadDashboardData();
   } catch (error) {
-    showToast(`Error: ${error.message}`, "danger");
+    console.error("❌ Error saving YouTube notification:", error);
+    showToast(`❌ Error: ${error.message}`, "danger");
   } finally {
     btn.disabled = false;
+    btn.innerHTML = originalBtnText;
   }
 }
 
@@ -691,8 +756,11 @@ function initializeEventListeners() {
     addYtBtn.addEventListener("click", () => {
       const form = document.getElementById("yt-notification-form");
       form.reset();
+
+      // Set default custom message (matches bot's default)
       document.getElementById("yt-custom-message").value =
-        "🔔 {@role} **{channel_name}** has uploaded a new video!\n\n**{video_title}**\n{video_url}";
+        "🔔 {@role} **{channel_name}** has uploaded a new video!\n\n" +
+        "**{video_title}**\n{video_url}";
 
       const statusEl = document.getElementById("yt-channel-finder-status");
       statusEl.innerHTML = 'Enter a @handle or channel URL and click "Find".';
@@ -1019,7 +1087,7 @@ function hideLoader(loaderId, contentId) {
   }
 }
 
-function showToast(message, type = "success") {
+function showToast(message, type = "success", duration = 5000) {
   let container = document.getElementById("toast-container-main");
   if (!container) {
     container = document.createElement("div");
@@ -1029,14 +1097,35 @@ function showToast(message, type = "success") {
       top: "80px",
       right: "20px",
       zIndex: 9999,
+      maxWidth: "400px",
     });
     document.body.appendChild(container);
   }
+
   const toast = document.createElement("div");
   toast.className = `alert alert-${type} alert-dismissible fade show shadow-lg`;
   toast.role = "alert";
-  const icon = type === "success" ? "check-circle" : "exclamation-triangle";
-  toast.innerHTML = `<i class="fas fa-${icon} me-2"></i> ${message} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+  toast.style.whiteSpace = "pre-line"; // Allow line breaks
+
+  const icon =
+    type === "success"
+      ? "check-circle"
+      : type === "warning"
+      ? "exclamation-triangle"
+      : "exclamation-circle";
+
+  toast.innerHTML = `
+    <i class="fas fa-${icon} me-2"></i> 
+    ${message} 
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  `;
+
   container.appendChild(toast);
-  setTimeout(() => bootstrap.Alert.getOrCreateInstance(toast)?.close(), 5000);
+
+  setTimeout(() => {
+    const alertInstance = bootstrap.Alert.getOrCreateInstance(toast);
+    if (alertInstance) {
+      alertInstance.close();
+    }
+  }, duration);
 }
